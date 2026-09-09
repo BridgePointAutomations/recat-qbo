@@ -1,4 +1,9 @@
 import type { CallToolResult, JSONObject } from '@modelcontextprotocol/server';
+import {
+  QboRateLimitError,
+  QBO_RATE_LIMIT_MIN_RETRY_SECONDS,
+  QBO_RATE_LIMIT_MAX_RETRY_SECONDS,
+} from '../lib/qbo/types.js';
 import { HttpError } from '../lib/http.js';
 import { QboWriteSafetyError } from '../lib/qbo/writeSafety.js';
 import { CategorizationError } from '../services/categorization.js';
@@ -216,6 +221,7 @@ function safeMutationCode(error: unknown): SafeToolErrorCode | null {
 }
 
 function safeCode(error: unknown): SafeToolErrorCode {
+  if (error instanceof QboRateLimitError) return 'RATE_LIMITED';
   if (error instanceof McpSchemaBoundsError) return 'INVALID_INPUT';
   if (error instanceof QboWriteSafetyError) return error.code;
   const mutationCode = safeMutationCode(error);
@@ -242,10 +248,14 @@ export function safeToolFailure(
   requestId: string,
 ): CallToolResult {
   const code = safeCode(error);
+  const retryAfterSeconds = error instanceof QboRateLimitError
+    ? safeRetryAfterSeconds(error.retryAfterSeconds)
+    : undefined;
   const value = {
     error: {
       code,
       message: SAFE_MESSAGES[code],
+      ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
       requestId: requestId.slice(0, MAX_REQUEST_ID_LENGTH),
     },
   };
@@ -254,6 +264,11 @@ export function safeToolFailure(
     content: [{ type: 'text', text: JSON.stringify(value) }],
     structuredContent: value,
   };
+}
+
+function safeRetryAfterSeconds(value: number): number | undefined {
+  if (!Number.isFinite(value) || !Number.isInteger(value)) return undefined;
+  return Math.min(QBO_RATE_LIMIT_MAX_RETRY_SECONDS, Math.max(QBO_RATE_LIMIT_MIN_RETRY_SECONDS, value));
 }
 
 export function safeInvalidToolFailure(requestId: string): CallToolResult {
