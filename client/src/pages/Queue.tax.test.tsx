@@ -346,6 +346,28 @@ beforeEach(() => {
 });
 
 describe('tax-aware manual queue', () => {
+  it('blocks Queue posting and navigation shortcuts while the split dialog owns focus', async () => {
+    const user = userEvent.setup();
+    await renderQueue([transaction(), transaction({
+      id: 'TRANSACTION_SECOND', qboId: 'PURCHASE_SECOND', payee: 'Second supplier',
+    })]);
+    await user.click(screen.getAllByRole('button', { name: /preview tax/i })[0]!);
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^post$/i })[0]).toBeEnabled());
+    await user.click(screen.getAllByRole('button', { name: 'Split' })[0]!);
+    await waitFor(() => expect(document.activeElement).toHaveTextContent('Split transaction'));
+    await user.keyboard('{Enter}jxc');
+    expect(mocks.commit).not.toHaveBeenCalled();
+    expect(mocks.legacyPost).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Split transaction' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox').every((checkbox) => !(checkbox as HTMLInputElement).checked)).toBe(true);
+    await user.keyboard('{Enter}');
+    await waitFor(() => expect(mocks.commit).toHaveBeenCalledWith(
+      'TRANSACTION_GENERIC', 5, '00000000-0000-4000-8000-000000000101',
+    ));
+  });
+
   it('shows a pointer cursor over clickable transaction rows', async () => {
     const style = installGlobalStyles();
     document.body.classList.add('rr');
@@ -551,7 +573,7 @@ describe('tax-aware manual queue', () => {
   it('invalidates an in-flight preview when the split draft is saved', async () => {
     await expectInFlightChangeInvalidates(async (user) => {
       await user.click(screen.getByRole('button', { name: 'Split' }));
-      const removeButtons = screen.getAllByRole('button', { name: '×' });
+      const removeButtons = screen.getAllByRole('button', { name: /Remove split line/ });
       await user.click(removeButtons[1]!);
       await user.click(screen.getByRole('button', { name: 'Save split' }));
     });

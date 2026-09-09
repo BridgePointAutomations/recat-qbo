@@ -1465,6 +1465,8 @@ export default function Queue() {
   // ---- keyboard (prototype onKey, verbatim ordering) ----
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   keyRef.current = (e: KeyboardEvent) => {
+    // The split dialog owns keyboard interaction, including its non-input heading.
+    if (splitEditId !== null) return;
     if (e.key === 'Escape') {
       closePicker();
       setSel({});
