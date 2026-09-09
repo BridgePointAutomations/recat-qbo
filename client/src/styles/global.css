@@ -232,3 +232,7 @@ input, select, button { font-family:inherit; }
     grid-template-columns: minmax(0, 1fr) !important;
   }
 }
+
+/* shared labelled fields */
+.rr .field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.rr .field-label { color:var(--mut); font-size:13px; font-weight:500; }
