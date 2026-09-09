@@ -211,6 +211,7 @@ async function lockedAuthorityRows(
         AND txn."qboId" = $10
         AND config."mode" = 'shadow'
         AND config."configVersion" = $5
+        AND config."schedulingGeneration" = job."schedulingGeneration"
         AND config."liveRequested" = TRUE
         AND config."liveEnabledAt" IS NOT NULL
         AND config."livePausedAt" IS NULL
