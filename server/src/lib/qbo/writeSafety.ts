@@ -1,7 +1,9 @@
+// Recat can only redistribute a transaction across categories: staging asserts
+// the lines total the proven source gross, so a write never moves the amount
+// the bank side was reconciled against. Cleared and reconciled status is
+// therefore not evidence about whether a write is safe, and is not collected.
 export interface QboWriteSafetyEvidence {
   readonly bookCloseDate: string | null;
-  readonly cleared: boolean;
-  readonly reconciled: boolean;
 }
 
 export interface QboWriteSafetyTarget {
@@ -41,8 +43,6 @@ export function assertQboWriteAllowed(
     || !nonEmpty(target.bankAccountQboId)
     || !dateOnly(target.txnDate)
     || (evidence.bookCloseDate !== null && !dateOnly(evidence.bookCloseDate))
-    || typeof evidence.cleared !== 'boolean'
-    || typeof evidence.reconciled !== 'boolean'
   ) {
     throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
   }

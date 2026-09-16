@@ -464,56 +464,6 @@ export function parseTransactionListReport(raw: RawReport): QboAccountTxn[] {
   return out;
 }
 
-function canonicalSafetyReportType(value: string | undefined): 'Purchase' | 'Deposit' | null {
-  const normalized = value?.trim().toLowerCase();
-  if (normalized === 'deposit') return 'Deposit';
-  if (
-    normalized === 'purchase'
-    || normalized === 'expense'
-    || normalized === 'check'
-    || normalized === 'cheque'
-    || normalized === 'credit card expense'
-    || normalized === 'credit card charge'
-  ) return 'Purchase';
-  return null;
-}
-
-function reportContainsSafetyTarget(raw: RawReport, target: QboWriteSafetyTarget): boolean {
-  const columns = raw.Columns?.Column ?? [];
-  const dateIndex = reportColumnIndex(columns, 'tx_date', 'date');
-  const typeIndex = reportColumnIndex(columns, 'txn_type', 'transaction type');
-  if (dateIndex < 0 || typeIndex < 0) {
-    throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
-  }
-  let found = false;
-  const walk = (rows: RawReportRow[]): void => {
-    for (const row of rows) {
-      if (row.Rows?.Row) walk(row.Rows.Row);
-      if (!row.ColData || row.type === 'Section') continue;
-      const date = row.ColData[dateIndex];
-      if (date?.value !== target.txnDate) continue;
-      const type = canonicalSafetyReportType(row.ColData[typeIndex]?.value);
-      const identity = reportTransactionIdentity(row.ColData, dateIndex, typeIndex);
-      if (identity.conflict) {
-        throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
-      }
-      const id = identity.id;
-      if (id === target.qboId) {
-        if (type !== target.qboType) {
-          throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
-        }
-        found = true;
-        continue;
-      }
-      if (type === target.qboType && (id === undefined || id === '')) {
-        throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
-      }
-    }
-  };
-  walk(raw.Rows?.Row ?? []);
-  return found;
-}
-
 function closeDate(preferences: RawPreferences | undefined): string | null {
   if (preferences?.AccountingInfoPrefs === undefined) {
     throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
@@ -1483,31 +1433,14 @@ export class RealQboClient implements QboClient {
     ) throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
 
     try {
-      const query = (status: 'Cleared' | 'Reconciled') => {
-        const params = new URLSearchParams({
-          start_date: target.txnDate,
-          end_date: target.txnDate,
-          account: target.bankAccountQboId,
-          cleared: status,
-          columns: 'tx_date,txn_type',
-        });
-        return this.request<RawReport>('GET', `/reports/TransactionList?${params.toString()}`);
-      };
-      // Keep the three provider reads in one explicit sequence.  The
-      // process-wide GET gate serializes them anyway; doing so here also
-      // prevents two already-queued report calls from continuing after a
-      // rate-limit failure has made this safety result unusable.
+      // The book-close date is the only provider evidence a write depends on.
+      // The Cleared and Reconciled TransactionList reports used to gate writes
+      // as well; they no longer do, so they are not requested.
       const preferences = await this.queryAll('select * from Preferences', 'Preferences');
-      const cleared = await query('Cleared');
-      const reconciled = await query('Reconciled');
       if (preferences.length !== 1) {
         throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
       }
-      return {
-        bookCloseDate: closeDate(preferences[0]),
-        cleared: reportContainsSafetyTarget(cleared, target),
-        reconciled: reportContainsSafetyTarget(reconciled, target),
-      };
+      return { bookCloseDate: closeDate(preferences[0]) };
     } catch (error) {
       // Preserve the provider's typed rate-limit signal and retry hint.  The
       // generic safety-unavailable wrapper would otherwise erase the reason

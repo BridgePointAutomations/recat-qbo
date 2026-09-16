@@ -275,8 +275,6 @@ function makeDeps(
   const safeClient: Partial<QboClient> = {
     fetchWriteSafety: async () => ({
       bookCloseDate: null,
-      cleared: false,
-      reconciled: false,
     }),
     ...client,
   };
@@ -369,7 +367,7 @@ describe('legacy write safety', () => {
       const recategorize = vi.fn().mockResolvedValue({ ok: true, newSyncToken: '1' });
       const { deps } = makeDeps(row, {
         fetchTxn: async () => freshQboTxn('0', qboType),
-        fetchWriteSafety: async () => ({ bookCloseDate: null, cleared: true, reconciled: true }),
+        fetchWriteSafety: async () => ({ bookCloseDate: null }),
         recategorize,
       });
       await expect(postTransaction('txn-1', { id: 'u-1', label: 'Generic User' }, {}, deps))
@@ -385,8 +383,8 @@ describe('legacy write safety', () => {
       .mockRejectedValueOnce(new QboSyncTokenConflict())
       .mockResolvedValueOnce({ ok: true, newSyncToken: '2' });
     const fetchWriteSafety = vi.fn()
-      .mockResolvedValueOnce({ bookCloseDate: null, cleared: false, reconciled: false })
-      .mockResolvedValueOnce({ bookCloseDate: null, cleared: true, reconciled: true });
+      .mockResolvedValueOnce({ bookCloseDate: null })
+      .mockResolvedValueOnce({ bookCloseDate: null });
     const { deps } = makeDeps(row, {
       fetchTxn: async () => freshQboTxn('1'), fetchWriteSafety, recategorize,
     });
@@ -404,8 +402,6 @@ describe('legacy write safety', () => {
       const recategorize = vi.fn();
       const fetchWriteSafety = vi.fn(async () => ({
         bookCloseDate: '2026-07-05',
-        cleared: qboType === 'Purchase',
-        reconciled: qboType === 'Deposit',
       }));
       const { deps } = makeDeps(row, {
         fetchTxn: async () => freshQboTxn('0', qboType),
@@ -441,8 +437,8 @@ describe('legacy write safety', () => {
     const recategorize = vi.fn().mockRejectedValueOnce(new QboSyncTokenConflict());
     const fetchWriteSafety = vi
       .fn()
-      .mockResolvedValueOnce({ bookCloseDate: null, cleared: false, reconciled: false })
-      .mockResolvedValueOnce({ bookCloseDate: '2026-07-05', cleared: true, reconciled: false });
+      .mockResolvedValueOnce({ bookCloseDate: null })
+      .mockResolvedValueOnce({ bookCloseDate: '2026-07-05' });
     const { deps } = makeDeps(row, {
       fetchTxn: async () => freshQboTxn('1'),
       fetchWriteSafety,
@@ -494,7 +490,7 @@ describe('undoPost', () => {
       const moveToAccount = vi.fn().mockResolvedValue({ ok: true, newSyncToken: '5' });
       const { deps } = makeDeps(row, {
         fetchTxn: async () => freshQboTxn('4', qboType),
-        fetchWriteSafety: async () => ({ bookCloseDate: null, cleared: true, reconciled: true }),
+        fetchWriteSafety: async () => ({ bookCloseDate: null }),
         moveToAccount,
       });
       await expect(undoPost('txn-1', { id: 'u-1', label: 'Generic User' }, deps))
@@ -518,8 +514,6 @@ describe('undoPost', () => {
         fetchTxn: async () => freshQboTxn('4', qboType),
         fetchWriteSafety: async () => ({
           bookCloseDate: '2026-07-05',
-          cleared: true,
-          reconciled: false,
         }),
         moveToAccount,
       });
@@ -1687,8 +1681,6 @@ function durableDeps(
     .mockResolvedValue(structuredClone(verifiedSnapshot));
   const fetchWriteSafety = vi.fn(async () => ({
     bookCloseDate: null,
-    cleared: false,
-    reconciled: false,
   }));
   const client: Partial<QboClient> = {
     fetchTxn: vi.fn(async () => currentQboTxn('7', qboType)),
@@ -1876,8 +1868,8 @@ describe('commitStagedCategorization durable lifecycle', () => {
   });
 
   it.each([
-    ['Purchase', { bookCloseDate: '2026-07-28', cleared: false, reconciled: false }, 'QBO_PERIOD_CLOSED'],
-    ['Deposit', { bookCloseDate: '2026-07-28', cleared: false, reconciled: true }, 'QBO_PERIOD_CLOSED'],
+    ['Purchase', { bookCloseDate: '2026-07-28' }, 'QBO_PERIOD_CLOSED'],
+    ['Deposit', { bookCloseDate: '2026-07-28' }, 'QBO_PERIOD_CLOSED'],
   ] as const)(
     'blocks a safety-locked %s before COMMITTING or sending',
     async (qboType, evidence, code) => {
@@ -1914,8 +1906,6 @@ describe('commitStagedCategorization durable lifecycle', () => {
       const fixture = durableDeps(new FakeDurableDb(qboType));
       fixture.fetchWriteSafety.mockResolvedValue({
         bookCloseDate: null,
-        cleared: true,
-        reconciled: true,
       });
 
       await expect(
@@ -3021,8 +3011,6 @@ describe('commitStagedCategorization durable lifecycle', () => {
     const restarted = durableDeps(db);
     restarted.fetchWriteSafety.mockResolvedValueOnce({
       bookCloseDate: '2026-07-28',
-      cleared: false,
-      reconciled: false,
     });
 
     await expect(
@@ -4495,8 +4483,6 @@ describe('undoCategorization', () => {
     const fixture = postedFixture();
     fixture.fetchWriteSafety.mockResolvedValueOnce({
       bookCloseDate: '2026-07-28',
-      cleared: true,
-      reconciled: false,
     });
 
     await expect(undoCategorization({
@@ -4516,8 +4502,6 @@ describe('undoCategorization', () => {
     resetForVerifiedRestore(fixture);
     fixture.fetchWriteSafety.mockResolvedValue({
       bookCloseDate: null,
-      cleared: true,
-      reconciled: true,
     });
 
     await expect(undoCategorization({

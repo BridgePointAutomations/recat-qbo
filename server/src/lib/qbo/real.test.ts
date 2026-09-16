@@ -640,17 +640,10 @@ describe('RealQboClient purchase-tax HTTP seam', () => {
     expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('GET');
   });
 
-  it('reads the close date and exact cleared/reconciled transaction identity', async () => {
-    const report = (id: string, type: string): RawReport => ({
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: { Row: [{ ColData: [{ value: '2026-08-01', id }, { value: type }] }] },
-    });
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: { BookCloseDate: '2026-07-31' } }] },
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report('deposit-1', 'Deposit'))))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report('other-id', 'Deposit'))));
+  it('reads the close date from preferences without any report calls', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      QueryResponse: { Preferences: [{ AccountingInfoPrefs: { BookCloseDate: '2026-07-31' } }] },
+    })));
     vi.stubGlobal('fetch', fetchMock);
 
     await expect(realClient().client.fetchWriteSafety({
@@ -658,170 +651,27 @@ describe('RealQboClient purchase-tax HTTP seam', () => {
       qboId: 'deposit-1',
       txnDate: '2026-08-01',
       bankAccountQboId: 'bank-1',
-    })).resolves.toEqual({
-      bookCloseDate: '2026-07-31',
-      cleared: true,
-      reconciled: false,
-    });
-    expect(decodeURIComponent(String(fetchMock.mock.calls[1]?.[0])))
-      .toContain('cleared=Cleared');
-    expect(decodeURIComponent(String(fetchMock.mock.calls[2]?.[0])))
-      .toContain('cleared=Reconciled');
+    })).resolves.toEqual({ bookCloseDate: '2026-07-31' });
+    // Cleared/Reconciled TransactionList reports no longer gate writes, so the
+    // close date is the only provider read a write pays for.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(decodeURIComponent(String(fetchMock.mock.calls[0]?.[0])))
+      .toContain('select * from Preferences');
+    expect(decodeURIComponent(String(fetchMock.mock.calls[0]?.[0])))
+      .not.toContain('TransactionList');
   });
 
-  it('canonicalizes the TransactionList Expense label to a Purchase entity', async () => {
-    const report = (type: string): RawReport => ({
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: {
-        Row: [{
-          ColData: [{ value: '2026-08-01', id: 'purchase-1' }, { value: type }],
-        }],
-      },
-    });
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report('Expense'))))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report('Purchase')))));
+  it('treats an explicit absent close date as safe evidence', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
+    }))));
 
     await expect(realClient().client.fetchWriteSafety({
       qboType: 'Purchase',
       qboId: 'purchase-1',
       txnDate: '2026-08-01',
       bankAccountQboId: 'bank-1',
-    })).resolves.toMatchObject({ cleared: true, reconciled: true });
-  });
-
-  it('reads safety identity from Intuit ColKey metadata and the transaction-type cell', async () => {
-    const report: RawReport = {
-      Columns: {
-        Column: [
-          {
-            ColTitle: 'Date',
-            ColType: 'Date',
-            MetaData: [{ Name: 'ColKey', Value: 'tx_date' }],
-          },
-          {
-            ColTitle: 'Transaction Type',
-            ColType: 'String',
-            MetaData: [{ Name: 'ColKey', Value: 'txn_type' }],
-          },
-        ],
-      },
-      Rows: {
-        Row: [{
-          ColData: [
-            { value: '2024-02-12' },
-            { value: 'Expense', id: 'PURCHASE_SYNTHETIC_1' },
-          ],
-        }],
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report)))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        ...report,
-        Rows: { Row: [] },
-      }))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'PURCHASE_SYNTHETIC_1',
-      txnDate: '2024-02-12',
-      bankAccountQboId: 'BANK_TWD',
-    })).resolves.toEqual({
-      bookCloseDate: null,
-      cleared: true,
-      reconciled: false,
-    });
-  });
-
-  it.each([
-    ['date-cell identity conflicts with the target transaction-type identity', 'other', 'PURCHASE_SYNTHETIC_1'],
-    ['transaction-type identity conflicts with the target date-cell identity', 'PURCHASE_SYNTHETIC_1', 'other'],
-  ])('fails closed when %s', async (_label, dateId, typeId) => {
-    const report: RawReport = {
-      Columns: {
-        Column: [
-          { ColType: 'tx_date' },
-          { ColType: 'txn_type' },
-        ],
-      },
-      Rows: {
-        Row: [{
-          ColData: [
-            { value: '2024-02-12', id: dateId },
-            { value: 'Expense', id: typeId },
-          ],
-        }],
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValue(new Response(JSON.stringify(report))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'PURCHASE_SYNTHETIC_1',
-      txnDate: '2024-02-12',
-      bankAccountQboId: 'BANK_TWD',
-    })).rejects.toMatchObject({ code: 'QBO_WRITE_SAFETY_UNAVAILABLE' });
-  });
-
-  it('accepts matching duplicated report identities', async () => {
-    const report: RawReport = {
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: {
-        Row: [{
-          ColData: [
-            { value: '2024-02-12', id: 'PURCHASE_SYNTHETIC_1' },
-            { value: 'Expense', id: 'PURCHASE_SYNTHETIC_1' },
-          ],
-        }],
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(report)))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ ...report, Rows: { Row: [] } }))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'PURCHASE_SYNTHETIC_1',
-      txnDate: '2024-02-12',
-      bankAccountQboId: 'BANK_TWD',
-    })).resolves.toMatchObject({ cleared: true, reconciled: false });
-  });
-
-  it('fails closed when the exact provider identity has an unknown report type', async () => {
-    const unknownType: RawReport = {
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: {
-        Row: [{
-          ColData: [{ value: '2026-08-01', id: 'purchase-1' }, { value: 'Localized expense' }],
-        }],
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockImplementation(async () => new Response(JSON.stringify(unknownType))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'purchase-1',
-      txnDate: '2026-08-01',
-      bankAccountQboId: 'bank-1',
-    })).rejects.toMatchObject({ code: 'QBO_WRITE_SAFETY_UNAVAILABLE' });
+    })).resolves.toEqual({ bookCloseDate: null });
   });
 
   it.each([
@@ -841,48 +691,6 @@ describe('RealQboClient purchase-tax HTTP seam', () => {
     })).rejects.toBeInstanceOf(QboWriteSafetyError);
   });
 
-  it('treats an explicit absent close date and empty filtered reports as safe evidence', async () => {
-    const emptyReport: RawReport = {
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: { Row: [] },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValueOnce(new Response(JSON.stringify(emptyReport)))
-      .mockResolvedValueOnce(new Response(JSON.stringify(emptyReport))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'purchase-1',
-      txnDate: '2026-08-01',
-      bankAccountQboId: 'bank-1',
-    })).resolves.toEqual({
-      bookCloseDate: null,
-      cleared: false,
-      reconciled: false,
-    });
-  });
-
-  it('fails closed when a matching filtered report row has no provider identity', async () => {
-    const ambiguousReport: RawReport = {
-      Columns: { Column: [{ ColType: 'tx_date' }, { ColType: 'txn_type' }] },
-      Rows: { Row: [{ ColData: [{ value: '2026-08-01' }, { value: 'Purchase' }] }] },
-    };
-    vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        QueryResponse: { Preferences: [{ AccountingInfoPrefs: {} }] },
-      })))
-      .mockResolvedValue(new Response(JSON.stringify(ambiguousReport))));
-
-    await expect(realClient().client.fetchWriteSafety({
-      qboType: 'Purchase',
-      qboId: 'purchase-1',
-      txnDate: '2026-08-01',
-      bankAccountQboId: 'bank-1',
-    })).rejects.toMatchObject({ code: 'QBO_WRITE_SAFETY_UNAVAILABLE' });
-  });
 
   it('requests and normalizes valid and malformed tax profiles', async () => {
     const fetchMock = vi.fn()

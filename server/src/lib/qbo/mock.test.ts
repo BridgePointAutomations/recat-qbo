@@ -46,24 +46,18 @@ beforeEach(() => {
 });
 
 describe('MockQboClient multi-line entity safety', () => {
-  it('returns the configured close-date and reconciliation evidence', async () => {
+  it('returns the configured close-date as the only write-safety evidence', async () => {
     const realm = getMockRealm(MOCK_REALM_HARBOR);
     realm.bookCloseDate = '2026-06-30';
     const entity = realm.txns.find((txn) => txn.qboId === '2');
     if (!entity) throw new Error('seed txn missing');
-    entity.cleared = true;
-    entity.reconciled = false;
 
     await expect(client().fetchWriteSafety({
       qboType: 'Purchase',
       qboId: '2',
       txnDate: '2026-07-01',
       bankAccountQboId: '1',
-    })).resolves.toEqual({
-      bookCloseDate: '2026-06-30',
-      cleared: true,
-      reconciled: false,
-    });
+    })).resolves.toEqual({ bookCloseDate: '2026-06-30' });
   });
 
   it('fails closed when the safety target does not match the stored transaction', async () => {

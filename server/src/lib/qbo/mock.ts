@@ -113,8 +113,6 @@ interface MockTxnEntity {
   rawLineWriteBody?: Record<string, unknown>;
   lastUpdated: string; // ISO
   deleted?: boolean;
-  cleared?: boolean;
-  reconciled?: boolean;
 }
 
 interface MockTransfer {
@@ -1332,11 +1330,7 @@ export class MockQboClient implements QboClient {
     ) {
       throw new QboWriteSafetyError('QBO_WRITE_SAFETY_UNAVAILABLE');
     }
-    return {
-      bookCloseDate: this.realm.bookCloseDate,
-      cleared: entity.cleared ?? false,
-      reconciled: entity.reconciled ?? false,
-    };
+    return { bookCloseDate: this.realm.bookCloseDate };
   }
 
   async listTaxCodes(): Promise<QboTaxCodeInfo[]> {
