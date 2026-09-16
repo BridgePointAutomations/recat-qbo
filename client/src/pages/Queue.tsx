@@ -100,7 +100,10 @@ const SORT_LABELS: Record<SortKey, string> = {
 // The date track holds fmtDate's widest output. That is 'May 28, 2024' (~90px at
 // --rfs 14.5) now that fmtDate appends the year outside the current year — 80px
 // fit the year-less form only and wrapped these onto a second line.
-const GRID_COLS = '38px 96px minmax(180px,1fr) 104px 118px minmax(200px,240px) 110px';
+const GRID_COLS = '38px 96px minmax(180px,1fr) 104px 118px minmax(200px,240px) minmax(270px, 290px)';
+
+// Column minima, six gaps, and horizontal row padding.
+const GRID_MIN_WIDTH = 38 + 96 + 180 + 104 + 118 + 200 + 270 + 6 * 12 + 2 * 18;
 
 const SHORTCUT_TIP =
   '↑↓ or j/k — move between rows · x — select · c — open category picker · t — open tags · Enter — post the active row. Inside a picker: ↑↓ navigate, Enter select, Esc close.';
@@ -1818,98 +1821,85 @@ export default function Queue() {
       !state.reloadRequired &&
       !locked;
     return (
-      <span
-        style={{
-          display: 'grid',
-          gridTemplateColumns: isSplit ? '1fr auto' : 'minmax(130px,1fr) minmax(120px,1fr) auto',
-          gap: 6,
-          alignItems: 'end',
-          marginTop: 8,
-        }}
-      >
-        {!isSplit && (
-          <TaxCodePicker
-            id={`tax-code-${t.id}`}
-            label={`${taxLabel} for ${t.payee}`}
-            readiness={taxReadiness}
-            direction={direction ?? 'purchase'}
-            value={state.taxCodeQboId}
-            disabled={locked}
-            onChange={(taxCodeQboId) => {
-              if (locked) return;
-              patchRow(t.id, {
-                taxCodeQboId,
-                taxCode:
-                  taxCodesFor(t).find((code) => code.qboId === taxCodeQboId)?.name ?? null,
-              });
-              invalidateTaxStage(t, {
-                taxCodeQboId,
-                taxCalculation:
-                  taxCodeQboId === null
-                    ? 'NotApplicable'
-                    : state.taxCalculation === 'TaxExcluded'
-                      ? 'TaxExcluded'
-                      : 'TaxInclusive',
-              });
-            }}
-          />
-        )}
-        {state.taxCodeQboId !== null ||
-        (isSplit && state.taxCalculation !== 'NotApplicable') ? (
-          <span style={{ display: 'block' }}>
-            <label
-              htmlFor={`tax-calculation-${t.id}`}
-              style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginBottom: 4 }}
-            >
-              Tax calculation for {t.payee}
-            </label>
-            <select
-              id={`tax-calculation-${t.id}`}
-              className="select"
-              value={state.taxCalculation === 'TaxExcluded' ? 'TaxExcluded' : 'TaxInclusive'}
+      <span className="queue-tax-controls">
+        <span className={`queue-tax-line${isMobile ? ' queue-tax-line-mobile' : ''}`}>
+          {!isSplit && (
+            <TaxCodePicker
+              id={`tax-code-${t.id}`}
+              label={`${taxLabel} for ${t.payee}`}
+              readiness={taxReadiness}
+              direction={direction ?? 'purchase'}
+              value={state.taxCodeQboId}
               disabled={locked}
-              onChange={(event) => {
+              onChange={(taxCodeQboId) => {
                 if (locked) return;
+                patchRow(t.id, {
+                  taxCodeQboId,
+                  taxCode:
+                    taxCodesFor(t).find((code) => code.qboId === taxCodeQboId)?.name ?? null,
+                });
                 invalidateTaxStage(t, {
-                  taxCalculation: event.target.value as TaxCalculation,
+                  taxCodeQboId,
+                  taxCalculation:
+                    taxCodeQboId === null
+                      ? 'NotApplicable'
+                      : state.taxCalculation === 'TaxExcluded'
+                        ? 'TaxExcluded'
+                        : 'TaxInclusive',
                 });
               }}
-              style={{ width: '100%' }}
-            >
-              <option value="TaxInclusive">Tax inclusive</option>
-              <option value="TaxExcluded">Tax exclusive</option>
-            </select>
-          </span>
-        ) : (
-          <span style={{ fontSize: 12, color: 'var(--mut)', paddingBottom: 8 }}>
-            No tax selected
-          </span>
-        )}
-        <button
-          type="button"
-          className="btn-ghost"
-          disabled={!canStage}
-          onClick={() => stageTax(t)}
-          style={{ opacity: canStage ? 1 : 0.45, whiteSpace: 'nowrap' }}
-        >
-          {state.staging ? 'Calculating…' : 'Preview tax'}
-        </button>
-        {state.staged && state.stagedVersion === state.version && (
-          <span
-            style={{
-              gridColumn: '1 / -1',
-              display: 'flex',
-              gap: 10,
-              color: 'var(--mut)',
-              fontSize: 12,
-              flexWrap: 'wrap',
-            }}
+            />
+          )}
+          {state.taxCodeQboId !== null ||
+          (isSplit && state.taxCalculation !== 'NotApplicable') ? (
+            <span style={{ display: 'block' }}>
+              <label
+                htmlFor={`tax-calculation-${t.id}`}
+                style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginBottom: 4 }}
+              >
+                Tax calculation for {t.payee}
+              </label>
+              <select
+                id={`tax-calculation-${t.id}`}
+                className="select"
+                value={state.taxCalculation === 'TaxExcluded' ? 'TaxExcluded' : 'TaxInclusive'}
+                disabled={locked}
+                onChange={(event) => {
+                  if (locked) return;
+                  invalidateTaxStage(t, {
+                    taxCalculation: event.target.value as TaxCalculation,
+                  });
+                }}
+                style={{ width: '100%' }}
+              >
+                <option value="TaxInclusive">Tax inclusive</option>
+                <option value="TaxExcluded">Tax exclusive</option>
+              </select>
+            </span>
+          ) : (
+            <span style={{ fontSize: 12, color: 'var(--mut)', paddingBottom: 8 }}>
+              No tax selected
+            </span>
+          )}
+          {state.staged && state.stagedVersion === state.version && (
+            <span className="queue-tax-totals">
+              <span>Subtotal {centsLabel(state.staged.totals.subtotalCents)}</span>
+              <span>Tax {centsLabel(state.staged.totals.taxCents)}</span>
+              <span>Total {centsLabel(state.staged.totals.totalCents)}</span>
+            </span>
+          )}
+        </span>
+        <span className="queue-tax-feedback">
+          <button
+            type="button"
+            className="btn-ghost"
+            disabled={!canStage}
+            onClick={() => stageTax(t)}
+            style={{ opacity: canStage ? 1 : 0.45, whiteSpace: 'nowrap' }}
           >
-            <span>Subtotal {centsLabel(state.staged.totals.subtotalCents)}</span>
-            <span>Tax {centsLabel(state.staged.totals.taxCents)}</span>
-            <span>Total {centsLabel(state.staged.totals.totalCents)}</span>
-          </span>
-        )}
+            {state.staging ? 'Calculating…' : 'Preview tax'}
+          </button>
+        </span>
       </span>
     );
   };
@@ -1969,11 +1959,11 @@ export default function Queue() {
     }
     if (mutation?.outcome === 'UNCERTAIN' || mutation?.outcome === 'IN_PROGRESS') {
       return (
-        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 5, alignItems: 'center' }}>
+        <span className="queue-recovery-content">
           <span style={{ color: 'var(--erT)', fontSize: 12 }}>
             Verify in QuickBooks — outcome uncertain
           </span>
-          <span style={{ display: 'inline-flex', gap: 7 }}>
+          <span className="queue-recovery-actions">
             <button className="btn-ghost" onClick={() => reconcileTax(v.t, false)}>
               Reconcile
             </button>
@@ -2322,7 +2312,7 @@ export default function Queue() {
             overflowX: 'auto',
           }}
         >
-          <div style={{ minWidth: 1020 }}>
+          <div style={{ minWidth: GRID_MIN_WIDTH }}>
             <div
               style={{
                 display: 'grid',
@@ -2589,7 +2579,7 @@ export default function Queue() {
                     )}
                     {rowPicker(v, false)}
                   </span>
-                  <span style={{ textAlign: 'center' }}>{statusCell(v, false)}</span>
+                  <span className="queue-status-cell" style={{ textAlign: 'center' }}>{statusCell(v, false)}</span>
                 </div>
                 {activeCompanyId && attachmentOpenId === t.id && (
                   <AttachmentPanel
@@ -2768,8 +2758,8 @@ export default function Queue() {
                     </a>
                   </span>
                 )}
-                <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                  <span style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <div className="queue-mobile-actions" style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                  <span style={{ position: 'relative', flex: '1 1 150px', minWidth: 0 }}>
                     <button
                       onClick={onOpenPicker(v)}
                       onMouseDown={stopMouse}
@@ -2821,7 +2811,7 @@ export default function Queue() {
                       Split
                     </button>
                   )}
-                  <span style={{ flex: 'none', display: 'inline-flex', alignItems: 'center' }}>
+                  <span className="queue-status-cell" style={{ flex: '1 1 240px', maxWidth: '100%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                     {statusCell(v, true)}
                   </span>
                 </div>
