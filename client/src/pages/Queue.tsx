@@ -399,9 +399,14 @@ export default function Queue() {
       .then((names) => {
         if (!cancelled && activeCompanyIdRef.current === companyId) setBankAccounts(names);
       })
-      .catch((error) => { if (!cancelled) toast(errText(error)); });
+      // The bank list only widens the filter dropdown; `bankOpts` still derives
+      // options from loaded rows. Degrade quietly rather than raising a toast
+      // for a company the user may already have left.
+      .catch(() => {
+        if (!cancelled && activeCompanyIdRef.current === companyId) setBankAccounts([]);
+      });
     return () => { cancelled = true; };
-  }, [activeCompanyId, toast]);
+  }, [activeCompanyId]);
 
   // ---- pending badge: recompute locally (pending = PENDING + ERROR rows) ----
   useEffect(() => {
