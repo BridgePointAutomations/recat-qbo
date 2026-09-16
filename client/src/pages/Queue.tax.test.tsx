@@ -567,10 +567,8 @@ describe('tax-aware manual queue', () => {
 
   it('invalidates an in-flight preview when the tax code changes', async () => {
     await expectInFlightChangeInvalidates(async (user) => {
-      await user.selectOptions(
-        screen.getByLabelText('Purchase tax for Generic supplier'),
-        '',
-      );
+      await user.click(screen.getByRole('combobox', { name: 'Purchase tax for Generic supplier' }));
+      await user.click(screen.getByRole('option', { name: 'No tax' }));
     });
   });
 
