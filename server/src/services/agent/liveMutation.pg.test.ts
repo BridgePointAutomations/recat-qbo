@@ -201,9 +201,18 @@ describePostgres('guarded live mutation PostgreSQL composition', () => {
         bankAccount: 'Generic source',
         revision: staged ? 1 : 0,
         taxCalculation: staged ? 'NotApplicable' : null,
+        // A realistic Purchase payload: #121 proves the source gross from the
+        // holding lines, so a stub without Line[] cannot be staged at all.
         rawData: {
+          Id: `purchase-${suffix}`, SyncToken: '7', TotalAmt: 10,
+          TxnDate: '2026-07-29',
           CurrencyRef: { value: 'XTS' },
           AccountRef: { value: 'source-generic' },
+          GlobalTaxCalculation: 'NotApplicable',
+          Line: [{
+            Id: '1', Amount: 10, DetailType: 'AccountBasedExpenseLineDetail',
+            AccountBasedExpenseLineDetail: { AccountRef: { value: 'holding-generic' } },
+          }],
         },
         ...(staged
           ? {

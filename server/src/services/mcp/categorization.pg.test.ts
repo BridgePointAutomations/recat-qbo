@@ -78,6 +78,7 @@ describePostgres('MCP categorization PostgreSQL atomicity', () => {
         realmId: `mcp-categorization-${suffix}`,
         legalName: 'MCP PostgreSQL Fixture',
         nickname: `mcp-${suffix.slice(0, 8)}`,
+        holdingAccountIds: [`holding-${suffix}`],
         dryRun: false,
       },
     });
@@ -116,6 +117,16 @@ describePostgres('MCP categorization PostgreSQL atomicity', () => {
         payee: 'MCP PostgreSQL Fixture',
         amount: '-10.50',
         bankAccount: 'Fixture bank',
+        // #121 proves the Purchase source gross from the holding lines.
+        rawData: {
+          Id: `purchase-${suffix}`, SyncToken: '0', TotalAmt: 10.5,
+          TxnDate: '2026-07-29', AccountRef: { value: `payment-${suffix}` },
+          GlobalTaxCalculation: 'NotApplicable',
+          Line: [{
+            Id: '1', Amount: 10.5, DetailType: 'AccountBasedExpenseLineDetail',
+            AccountBasedExpenseLineDetail: { AccountRef: { value: `holding-${suffix}` } },
+          }],
+        },
       },
     });
     return {
