@@ -444,6 +444,17 @@ describe('tax-aware manual queue', () => {
     expect(await openAccountFilter()).not.toContain('Example old account');
   });
 
+  it.each([-1, 1])('stages proven source gross with direction %s instead of mirrored net', async (sign) => {
+    const user = userEvent.setup();
+    await renderQueue(transaction({ amount: sign * 100, sourceGrossCents: sign * 11200 }));
+    await user.click(screen.getByRole('button', { name: /preview tax/i }));
+    await waitFor(() => expect(mocks.stage).toHaveBeenCalledWith(
+      'TRANSACTION_GENERIC', expect.objectContaining({
+        lines: [expect.objectContaining({ grossCents: sign * 11200 })],
+      }),
+    ));
+  });
+
   it('stages exact cents at the current revision, previews server totals, and commits that revision', async () => {
     const user = userEvent.setup();
     await renderQueue();

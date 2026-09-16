@@ -2024,7 +2024,7 @@ describe('tax read normalization', () => {
           },
         ],
       }),
-    ).toEqual({
+    ).toMatchObject({
       qboId: 'P-1',
       syncToken: '7',
       totalCents: 10500,

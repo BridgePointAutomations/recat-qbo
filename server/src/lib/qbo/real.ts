@@ -67,6 +67,9 @@ import { classifyIntuitOAuthBody } from './diagnostics.js';
 import { moneyToCents } from '../../services/tax/model.js';
 import {
   isSupportedTaxRateValue,
+  purchaseCategoryOnlyLineHash,
+  purchasePreservedHash,
+  purchaseRawLineHash,
   preparePurchaseRecategorization as preparePurchaseRecategorizationBody,
   preparePurchaseRestore as preparePurchaseRestoreBody,
 } from './purchaseTax.js';
@@ -724,6 +727,8 @@ export function mapPurchaseSnapshot(raw: RawPurchase): QboPurchaseSnapshot {
       taxCodeQboId: detail?.TaxCodeRef?.value ?? null,
       taxAmountCents,
       taxInclusiveCents,
+      rawHash: purchaseRawLineHash(line),
+      categoryOnlyHash: purchaseCategoryOnlyLineHash(line),
     };
   });
   const derivedTotalTaxCents = lines.reduce<number | null>((sum, line) => {
@@ -744,6 +749,7 @@ export function mapPurchaseSnapshot(raw: RawPurchase): QboPurchaseSnapshot {
         ? derivedTotalTaxCents
         : null
       : signedCents(raw.TxnTaxDetail.TotalTax),
+    preservedHash: purchasePreservedHash(raw),
     lines,
   };
 }

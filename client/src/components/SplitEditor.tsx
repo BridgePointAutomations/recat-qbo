@@ -56,7 +56,9 @@ export default function SplitEditor({
   }, [elements.floating]);
   const dismiss = useDismiss(context, { outsidePress: false });
   const { getFloatingProps } = useInteractions([dismiss]);
-  const total = Math.abs(txn.amount);
+  // Split against the exact source gross when QuickBooks reported one (#121).
+  const sourceAmount = txn.sourceGrossCents === undefined ? txn.amount : txn.sourceGrossCents / 100;
+  const total = Math.abs(sourceAmount);
   const taxDirection: TaxDirection | null = txn.qboType === 'Purchase'
     ? 'purchase'
     : txn.qboType === 'Deposit'
@@ -183,7 +185,7 @@ export default function SplitEditor({
           Split transaction
         </div>
         <div style={{ fontSize: 13.5, color: 'var(--mut)', margin: '4px 0 16px' }}>
-          {txn.payee} · {fmtMoney(txn.amount)} — assign every dollar to a category.
+          {txn.payee} · {fmtMoney(sourceAmount)} — assign every dollar to a category.
         </div>
         {taxEnabled && (
           <span style={{ display: 'block', marginBottom: 12 }}>
