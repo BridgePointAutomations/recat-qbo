@@ -31,7 +31,7 @@ import {
 import { fmtDate, fmtMoney } from '../lib/format';
 import { InfoDot, Spinner } from '../components/ui';
 import CategoryPicker from '../components/CategoryPicker';
-import type { CategoryOption } from '../components/CategoryPicker';
+import { Select } from '../components/SelectCombobox';
 import TagPicker from '../components/TagPicker';
 import SplitEditor from '../components/SplitEditor';
 import type { SplitLineDraft } from '../components/SplitEditor';
@@ -106,7 +106,7 @@ const GRID_COLS = '38px 96px minmax(180px,1fr) 104px 118px minmax(200px,240px) m
 const GRID_MIN_WIDTH = 38 + 96 + 180 + 104 + 118 + 200 + 270 + 6 * 12 + 2 * 18;
 
 const SHORTCUT_TIP =
-  '↑↓ or j/k — move between rows · x — select · c — open category picker · t — open tags · Enter — post the active row. Inside a picker: ↑↓ navigate, Enter select, Esc close.';
+  '↑↓ or j/k — move between rows · x — select · t — open tags · Enter — post the active row.';
 
 /** '4 min ago' / 'just now' style relative timestamp. */
 function relTime(iso: string | null | undefined): string {
@@ -247,10 +247,8 @@ export default function Queue() {
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [activeIdx, setActiveIdx] = useState(0);
   const [sel, setSel] = useState<Record<string, boolean>>({});
-  const [picker, setPicker] = useState<string | null>(null); // txn id | 'bulk' | null
-  const [pickQ, setPickQ] = useState('');
-  const [pickIdx, setPickIdx] = useState(0);
   const [tagPicker, setTagPicker] = useState<string | null>(null);
+  const tagPickerRootRef = useRef<HTMLSpanElement>(null);
   const [errOpenId, setErrOpenId] = useState<string | null>(null);
   const [rulePrompt, setRulePrompt] = useState<RulePromptState | null>(null);
   const [splitEditId, setSplitEditId] = useState<string | null>(null);
@@ -599,57 +597,28 @@ export default function Queue() {
     [selPend, rows, tagsRequired, taxReadyFor],
   );
 
-  // ---- picker options (suggested pinned first) ----
-  const filteredOpts = useMemo(() => {
-    const q = pickQ.toLowerCase();
-    let opts = catAccounts.filter(
-      (a) => !q || a.name.toLowerCase().includes(q) || a.classification.toLowerCase().includes(q),
-    );
-    if (picker !== null && picker !== 'bulk') {
-      const t = rows.find((x) => x.id === picker);
-      const sg = t?.suggestion?.category;
-      if (sg) opts = [...opts.filter((a) => a.name === sg), ...opts.filter((a) => a.name !== sg)];
-    }
-    return opts;
-  }, [pickQ, picker, rows, catAccounts]);
-
-  const pickOpts = useMemo<CategoryOption[]>(() => {
-    const t = picker !== null && picker !== 'bulk' ? rows.find((x) => x.id === picker) : undefined;
-    const sg = t?.suggestion?.category;
-    return filteredOpts.slice(0, 40).map((a) => ({
-      group: a.classification,
-      name: a.name,
-      sug: !!(t && sg === a.name),
-    }));
-  }, [filteredOpts, picker, rows]);
-
-  const closePicker = useCallback(() => {
-    setPicker(null);
-    setPickQ('');
-    setPickIdx(0);
-  }, []);
-
   // ---- actions ----
 
-  const openPicker = useCallback((id: string) => {
-    setPicker(id);
-    setPickQ('');
-    setPickIdx(0);
+  const openSplit = useCallback(() => {
+    // Draft seeding lives in <SplitEditor/> (mounts fresh).
+    setTagPicker(null);
   }, []);
 
-  const openSplit = useCallback(() => {
-    // draft seeding lives in <SplitEditor/> (mounts fresh); mirror the rest of
-    // the prototype's openSplit(): close pickers, reset query.
-    setPicker(null);
-    setTagPicker(null);
-    setPickQ('');
-    setPickIdx(0);
-  }, []);
+  useEffect(() => {
+    if (tagPicker === null) return;
+    const dismissTagPicker = (event: MouseEvent) => {
+      const target = event.target;
+      if (target instanceof Node && tagPickerRootRef.current?.contains(target)) return;
+      setTagPicker(null);
+    };
+    document.addEventListener('mousedown', dismissTagPicker);
+    return () => document.removeEventListener('mousedown', dismissTagPicker);
+  }, [tagPicker]);
 
   const doOpenSplit = useCallback(
     (id: string) => {
       const row = rows.find((candidate) => candidate.id === id);
-      if (!row || hasActiveMutation(row)) return;
+      if (!row || row.status !== 'PENDING' || hasActiveMutation(row)) return;
       openSplit();
       setSplitEditId(id);
     },
@@ -658,10 +627,9 @@ export default function Queue() {
 
   /** Assign a category: server merges matching rule tags — use the returned dto. */
   const categorizeTo = useCallback(
-    (t: TransactionDto, name: string) => {
+    (t: TransactionDto, name: string, categoryQboId: string) => {
       if (hasActiveMutation(t)) return;
       const prev = { category: t.category, categoryQboId: t.categoryQboId };
-      const categoryQboId = qboIdOf(name);
       patchRow(t.id, { category: name, categoryQboId }); // optimistic
       if (taxReadyFor(t)) {
         invalidateTaxStage(t);
@@ -679,7 +647,6 @@ export default function Queue() {
     },
     [
       hasActiveMutation,
-      qboIdOf,
       patchRow,
       taxReadyFor,
       invalidateTaxStage,
@@ -688,22 +655,49 @@ export default function Queue() {
     ],
   );
 
-  const pickChoose = useCallback(
-    (name: string) => {
-      const target = picker;
-      closePicker();
-      if (target === 'bulk') {
-        setBulkCat(name);
-        for (const id of selPend) {
-          const t = rows.find((r) => r.id === id);
-          if (t) categorizeTo(t, name);
-        }
-      } else if (target !== null) {
-        const t = rows.find((r) => r.id === target);
-        if (t) categorizeTo(t, name);
+  const bulkCategoryOptions = useMemo(
+    () => catAccounts.map((account) => ({
+      value: account.qboId,
+      group: account.classification,
+      name: account.name,
+      sug: false,
+    })),
+    [catAccounts],
+  );
+
+  const rowCategoryOptions = useMemo(() => {
+    const bySuggestion = new Map<string, typeof bulkCategoryOptions>();
+    return (t: TransactionDto) => {
+      const suggested = t.suggestion?.category;
+      if (!suggested) return bulkCategoryOptions;
+      const cached = bySuggestion.get(suggested);
+      if (cached) return cached;
+      const options = bulkCategoryOptions.map((option) => ({ ...option, sug: option.name === suggested }));
+      const ordered = [...options.filter((option) => option.sug), ...options.filter((option) => !option.sug)];
+      bySuggestion.set(suggested, ordered);
+      return ordered;
+    };
+  }, [bulkCategoryOptions]);
+
+  const pickRowCategory = useCallback(
+    (t: TransactionDto, qboId: string) => {
+      const account = catAccounts.find((candidate) => candidate.qboId === qboId);
+      if (account) categorizeTo(t, account.name, account.qboId);
+    },
+    [catAccounts, categorizeTo],
+  );
+
+  const pickBulkCategory = useCallback(
+    (qboId: string) => {
+      const account = catAccounts.find((candidate) => candidate.qboId === qboId);
+      if (!account) return;
+      setBulkCat(account.qboId);
+      for (const id of selPend) {
+        const t = rows.find((row) => row.id === id);
+        if (t) categorizeTo(t, account.name, account.qboId);
       }
     },
-    [picker, closePicker, selPend, rows, categorizeTo],
+    [catAccounts, selPend, rows, categorizeTo],
   );
 
   const stageBodyFor = useCallback(
@@ -1543,29 +1537,14 @@ export default function Queue() {
     [sortKey, sortDir],
   );
 
-  // ---- outside-click closes popups (prototype root onClick closeMenus) ----
-  const closeMenusRef = useRef<() => void>(() => {});
-  closeMenusRef.current = () => {
-    if (picker !== null || tagPicker !== null) {
-      setPicker(null);
-      setTagPicker(null);
-      setPickQ('');
-      setPickIdx(0);
-    }
-  };
-  useEffect(() => {
-    const fn = () => closeMenusRef.current();
-    document.addEventListener('mousedown', fn);
-    return () => document.removeEventListener('mousedown', fn);
-  }, []);
-
   // ---- keyboard (prototype onKey, verbatim ordering) ----
   const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
   keyRef.current = (e: KeyboardEvent) => {
     // The split dialog owns keyboard interaction, including its non-input heading.
     if (splitEditId !== null) return;
+    // Shared controls preventDefault on the keys they handle themselves.
+    if (e.defaultPrevented) return;
     if (e.key === 'Escape') {
-      closePicker();
       setSel({});
       setTagPicker(null);
       setErrOpenId(null);
@@ -1573,25 +1552,9 @@ export default function Queue() {
       setSplitEditId(null);
       return;
     }
-    if (picker !== null) {
-      // Navigate/select within the rendered list (pickOpts, capped at 40) so
-      // Enter can never land on an option the popup doesn't show.
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setPickIdx((i) => Math.min(i + 1, pickOpts.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setPickIdx((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        const opt = pickOpts[pickIdx];
-        if (opt) pickChoose(opt.name);
-      }
-      return;
-    }
     const target = e.target as HTMLElement | null;
-    const tag = (target?.tagName || '').toUpperCase();
-    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+    if (target?.closest('input, select, textarea, .control-trigger, .control-popover, [role="combobox"], [role="listbox"], [contenteditable="true"]')) return;
+    if (e.key === 'Enter' && target?.closest('button, a, summary, [role="button"]')) return;
     if (!vis.length) return;
     const i = Math.min(activeIdx, vis.length - 1);
     const cur = vis[i];
@@ -1606,18 +1569,14 @@ export default function Queue() {
       if (!hasActiveMutation(cur)) {
         setSel((s) => ({ ...s, [cur.id]: !s[cur.id] }));
       }
-    } else if (e.key === 'c') {
-      e.preventDefault();
-      if (cur.status === 'PENDING' && !hasActiveMutation(cur)) openPicker(cur.id);
     } else if (e.key === 't') {
       e.preventDefault();
       if (!hasActiveMutation(cur)) {
         setTagPicker((tp) => (tp === cur.id ? null : cur.id));
-        setPicker(null);
       }
     } else if (e.key === 'Enter') {
       // Splits count as categorized — doPost's own guards handle the rest.
-      if (cur.status === 'PENDING' && (cur.category || (cur.splits && cur.splits.length))) {
+      if (cur.status === 'PENDING' && !hasActiveMutation(cur) && (cur.category || (cur.splits && cur.splits.length))) {
         doPost(cur.id);
       }
     }
@@ -1681,7 +1640,6 @@ export default function Queue() {
     notReady: boolean;
     pendTip: string;
     pickLabel: string;
-    pickColor: string;
   }
 
   const rowView = (t: TransactionDto): RowView => {
@@ -1717,14 +1675,12 @@ export default function Queue() {
             : 'Tags are required — add a tag first'
           : 'Choose a category first',
       pickLabel: hasSplit
-        ? `Split · ${t.splits!.length} categories`
+        ? `Split · ${t.splits!.length} ${t.splits!.length === 1 ? 'category' : 'categories'}`
         : t.category
           ? fullCat(t.category)
           : suggested
             ? sugName!
             : 'Choose category…',
-      pickColor:
-        t.category || hasSplit ? 'var(--ink)' : suggested ? 'var(--amT)' : 'var(--fnt)',
     };
   };
 
@@ -1733,44 +1689,46 @@ export default function Queue() {
     setErrOpenId((cur) => (cur === t.id ? cur : null));
   };
 
-  const onOpenPicker = (v: RowView) => (e: ReactMouseEvent) => {
-    e.stopPropagation();
-    if (v.t.status !== 'PENDING' || hasActiveMutation(v.t)) return;
-    if (v.t.splits && v.t.splits.length) {
-      doOpenSplit(v.t.id);
-    } else {
-      openPicker(v.t.id);
-    }
-  };
-
   const onTagBtn = (t: TransactionDto) => (e: ReactMouseEvent) => {
     e.stopPropagation();
     if (hasActiveMutation(t)) return;
     setTagPicker((tp) => (tp === t.id ? null : t.id));
-    setPicker(null);
   };
 
-  const rowPicker = (v: RowView, mobile: boolean) =>
-    picker === v.t.id ? (
-      <CategoryPicker
-        query={pickQ}
-        onQueryChange={(q) => {
-          setPickQ(q);
-          setPickIdx(0);
+  const rowCategoryPicker = (v: RowView, mobile: boolean) =>
+    v.t.splits && v.t.splits.length ? (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          doOpenSplit(v.t.id);
         }}
-        options={pickOpts}
-        empty={filteredOpts.length === 0}
-        activeIdx={pickIdx}
-        onPick={pickChoose}
-        onSplitFooter={() => doOpenSplit(v.t.id)}
-        showBadges={!mobile}
-        containerStyle={
-          mobile
-            ? { zIndex: 15, top: 'calc(100% + 6px)', width: 'min(300px,86vw)' }
-            : { zIndex: 15, top: 'calc(100% + 6px)', width: 300 }
-        }
-      />
-    ) : null;
+        disabled={v.t.status !== 'PENDING' || hasActiveMutation(v.t)}
+        className="control-trigger queue-split-trigger hov-brd"
+      >
+        {v.pickLabel}
+      </button>
+    ) : (
+      <span onClick={(event) => event.stopPropagation()}>
+        <CategoryPicker
+          label={`Category for ${v.t.payee}`}
+          value={v.t.categoryQboId}
+          options={rowCategoryOptions(v.t)}
+          onPick={(qboId) => pickRowCategory(v.t, qboId)}
+          onSplitFooter={() => doOpenSplit(v.t.id)}
+          showBadges={!mobile}
+          disabled={v.t.status !== 'PENDING' || hasActiveMutation(v.t)}
+          triggerText={v.pickLabel}
+          triggerTone={v.suggested ? 'suggested' : undefined}
+          triggerBadge={v.suggested ? v.isRule ? 'rule' : 'suggested' : undefined}
+          triggerBadgeTooltip={
+            v.isRule && (v.t.suggestion?.matchedRules ?? 0) > 1
+              ? `Matched ${v.t.suggestion?.matchedRules} rules — “${v.t.suggestion?.winnerMatchText ?? ''}” won (topmost). Reorder in Rules.`
+              : undefined
+          }
+        />
+      </span>
+    );
 
   const tagChips = (t: TransactionDto) =>
     t.tagIds
@@ -2247,21 +2205,18 @@ export default function Queue() {
             placeholder="Search anything — payee, amount, category, status…"
             style={{ width: 280, maxWidth: '100%' }}
           />
-          <select
-            className="select"
+          <Select
+            label="Account filter"
             value={acct}
-            onChange={(e) => {
-              setAcct(e.target.value);
+            options={[
+              { value: 'all', label: 'All accounts' },
+              ...bankOpts.map((name) => ({ value: name, label: name })),
+            ]}
+            onValueChange={(next) => {
+              setAcct(next ?? 'all');
               setActiveIdx(0);
             }}
-          >
-            <option value="all">All accounts</option>
-            {bankOpts.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
+          />
           <button
             className="btn-ghost"
             type="button"
@@ -2402,6 +2357,7 @@ export default function Queue() {
                       </span>
                     )}
                     <span
+                      ref={tagPicker === t.id ? tagPickerRootRef : undefined}
                       style={{
                         display: 'flex',
                         flexWrap: 'wrap',
@@ -2506,49 +2462,7 @@ export default function Queue() {
                   <span
                     style={{ position: 'relative', display: 'flex', gap: 5, alignItems: 'center' }}
                   >
-                    <button
-                      onClick={onOpenPicker(v)}
-                      onMouseDown={stopMouse}
-                      disabled={hasActiveMutation(t)}
-                      className="hov-brd"
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        textAlign: 'left',
-                        border: `1px solid ${picker === t.id ? 'var(--acc)' : 'var(--bd)'}`,
-                        borderRadius: 7,
-                        padding: '7px 12px',
-                        fontSize: 14,
-                        background: 'var(--card)',
-                        color: v.pickColor,
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        boxShadow: picker === t.id ? '0 0 0 3px rgba(47,93,80,.12)' : 'none',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {v.pickLabel}
-                      {v.suggested && (
-                        <span
-                          {...(v.isRule && t.suggestion && (t.suggestion.matchedRules ?? 0) > 1
-                            ? {
-                                'data-tip': `Matched ${t.suggestion.matchedRules} rules — “${t.suggestion.winnerMatchText ?? ''}” won (topmost). Reorder in Rules.`,
-                              }
-                            : {})}
-                          style={{
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            color: 'var(--amT)',
-                            marginLeft: 7,
-                          }}
-                        >
-                          {v.isRule ? 'rule' : 'suggested'}
-                        </span>
-                      )}
-                    </button>
+                    {rowCategoryPicker(v, false)}
                     {v.state === 'pending' && (
                       <button
                         onClick={(e) => {
@@ -2577,7 +2491,7 @@ export default function Queue() {
                         Split
                       </button>
                     )}
-                    {rowPicker(v, false)}
+
                   </span>
                   <span className="queue-status-cell" style={{ textAlign: 'center' }}>{statusCell(v, false)}</span>
                 </div>
@@ -2677,7 +2591,7 @@ export default function Queue() {
                     {fmtMoney(t.amount)}
                   </span>
                 </div>
-                <span
+                <span ref={tagPicker === t.id ? tagPickerRootRef : undefined}
                   style={{
                     display: 'flex',
                     flexWrap: 'wrap',
@@ -2760,30 +2674,8 @@ export default function Queue() {
                 )}
                 <div className="queue-mobile-actions" style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
                   <span style={{ position: 'relative', flex: '1 1 150px', minWidth: 0 }}>
-                    <button
-                      onClick={onOpenPicker(v)}
-                      onMouseDown={stopMouse}
-                      disabled={hasActiveMutation(t)}
-                      style={{
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        textAlign: 'left',
-                        border: `1px solid ${picker === t.id ? 'var(--acc)' : 'var(--bd)'}`,
-                        borderRadius: 7,
-                        padding: '9px 12px',
-                        fontSize: 13.5,
-                        background: 'var(--card)',
-                        color: v.pickColor,
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {v.pickLabel}
-                    </button>
-                    {rowPicker(v, true)}
+                    {rowCategoryPicker(v, true)}
+
                   </span>
                   {v.state === 'pending' && (
                     <button
@@ -2869,12 +2761,7 @@ export default function Queue() {
       {selIds.length > 0 && (
         <BulkBar
           count={selCount}
-          label={bulkCat ? fullCat(bulkCat) : 'Assign one category…'}
           btnOpacity={selReady.length ? 1 : 0.45}
-          onOpenPicker={(e) => {
-            e.stopPropagation();
-            openPicker('bulk');
-          }}
           onPost={() => {
             void bulkPost();
           }}
@@ -2882,32 +2769,20 @@ export default function Queue() {
             setSel({});
             setBulkCat(null);
           }}
-          picker={
-            picker === 'bulk' ? (
-              <CategoryPicker
-                query={pickQ}
-                onQueryChange={(q) => {
-                  setPickQ(q);
-                  setPickIdx(0);
-                }}
-                options={pickOpts}
-                empty={filteredOpts.length === 0}
-                activeIdx={pickIdx}
-                onPick={pickChoose}
-                showBadges={false}
-                containerStyle={{
-                  zIndex: 30,
-                  bottom: 'calc(100% + 8px)',
-                  width: 300,
-                  color: 'var(--ink)',
-                }}
-              />
-            ) : null
+          categoryControl={
+            <CategoryPicker
+              label="Category for selected transactions"
+              triggerText="Assign one category…"
+              disabled={selPend.length === 0}
+              value={bulkCat}
+              options={bulkCategoryOptions}
+              onPick={pickBulkCategory}
+              showBadges={false}
+            />
           }
         />
       )}
 
-      {/* rule prompt */}
       {rulePrompt && (
         <RulePrompt
           payee={rulePrompt.payee}

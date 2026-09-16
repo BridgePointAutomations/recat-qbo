@@ -365,6 +365,10 @@ describe('tax-aware manual queue', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(screen.getAllByRole('checkbox').every((checkbox) => !(checkbox as HTMLInputElement).checked)).toBe(true);
+    // Closing the dialog returns focus to its Split trigger. Enter belongs to a
+    // focused button (#125), so step off it before checking that row shortcuts
+    // are live again -- the point of this case.
+    (document.activeElement as HTMLElement | null)?.blur();
     await user.keyboard('{Enter}');
     await waitFor(() => expect(mocks.commit).toHaveBeenCalledWith(
       'TRANSACTION_GENERIC', 5, '00000000-0000-4000-8000-000000000101',
@@ -389,21 +393,21 @@ describe('tax-aware manual queue', () => {
     const user = userEvent.setup();
     await renderQueue();
 
-    await user.click(screen.getByRole('button', {
-      name: 'Expenses · Generic expense',
+    await user.click(screen.getByRole('combobox', {
+      name: 'Category for Generic supplier',
     }));
 
-    expect(screen.queryByRole('button', {
+    expect(screen.queryByRole('option', {
       name: /Uncategorised Expense/,
     })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', {
+    expect(screen.getByRole('option', {
       name: /Alternate expense/,
     })).toBeInTheDocument();
 
     // A user's own account that merely mentions the term is not QuickBooks'
     // holding account, and hiding it would remove a destination they created
     // on purpose with nothing to explain where it went.
-    expect(screen.getByRole('button', {
+    expect(screen.getByRole('option', {
       name: /Old Uncategorized Costs/,
     })).toBeInTheDocument();
   });
@@ -411,22 +415,33 @@ describe('tax-aware manual queue', () => {
   it('offers accounts with no transactions currently in the Queue', async () => {
     mocks.list.mockResolvedValue({ transactions: [], nextCursor: null, pendingCount: 0 });
     mocks.bankAccounts.mockResolvedValue(['Example dormant account']);
+    const user = userEvent.setup();
     render(<Queue />);
+    // The account filter is a shared Select (#125); its options render on open.
+    await waitFor(() => expect(mocks.bankAccounts).toHaveBeenCalledWith('COMPANY_GENERIC'));
+    await user.click(screen.getByRole('combobox', { name: 'Account filter' }));
     expect(await screen.findByRole('option', { name: 'Example dormant account' })).toBeInTheDocument();
-    expect(mocks.bankAccounts).toHaveBeenCalledWith('COMPANY_GENERIC');
   });
 
   it('ignores account results from a company that is no longer selected', async () => {
     const old = deferred<string[]>();
     mocks.list.mockResolvedValue({ transactions: [], nextCursor: null, pendingCount: 0 });
     mocks.bankAccounts.mockReturnValueOnce(old.promise).mockResolvedValueOnce(['Example current account']);
+    const user = userEvent.setup();
     const view = render(<Queue />);
     await waitFor(() => expect(mocks.bankAccounts).toHaveBeenCalledTimes(1));
     mocks.activeCompanyId = 'COMPANY_OTHER';
     view.rerender(<Queue />);
-    expect(await screen.findByRole('option', { name: 'Example current account' })).toBeInTheDocument();
+    // Options live in the shared Select's listbox (#125), so reopen to read them.
+    const openAccountFilter = async () => {
+      await user.click(screen.getByRole('combobox', { name: 'Account filter' }));
+      const names = screen.queryAllByRole('option').map((node) => node.textContent);
+      await user.keyboard('{Escape}');
+      return names;
+    };
+    await waitFor(async () => expect(await openAccountFilter()).toContain('Example current account'));
     await act(async () => old.resolve(['Example old account']));
-    expect(screen.queryByRole('option', { name: 'Example old account' })).not.toBeInTheDocument();
+    expect(await openAccountFilter()).not.toContain('Example old account');
   });
 
   it('stages exact cents at the current revision, previews server totals, and commits that revision', async () => {
@@ -569,8 +584,8 @@ describe('tax-aware manual queue', () => {
 
   it('invalidates an in-flight preview when the category changes', async () => {
     await expectInFlightChangeInvalidates(async (user) => {
-      await user.click(screen.getByRole('button', { name: 'Expenses · Generic expense' }));
-      await user.click(screen.getByRole('button', { name: /Alternate expense/ }));
+      await user.click(screen.getByRole('combobox', { name: 'Category for Generic supplier' }));
+      await user.click(screen.getByRole('option', { name: /Alternate expense/ }));
     });
   });
 
@@ -868,8 +883,8 @@ describe('tax-aware manual queue', () => {
         },
       }));
 
-      expect(screen.getByRole('button', {
-        name: 'Expenses · Generic expense',
+      expect(screen.getByRole('combobox', {
+        name: 'Category for Generic supplier',
       })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Split' })).toBeDisabled();
       expect(screen.getByRole('button', { name: '+ tag' })).toBeDisabled();
