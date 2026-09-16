@@ -6,6 +6,7 @@ import type { StatementDto } from '@recat/shared';
 const mocks = vi.hoisted(() => ({
   pl: vi.fn(), bs: vi.fn(), transactionLog: vi.fn(), custom: vi.fn(),
   transactions: vi.fn(), savedList: vi.fn(), toast: vi.fn(),
+  bankAccounts: vi.fn(),
 }));
 vi.mock('../state/AppContext', () => ({
   useApp: () => ({ activeCompany: { id: 'company-a', nickname: 'Example company' },
@@ -13,7 +14,10 @@ vi.mock('../state/AppContext', () => ({
 }));
 vi.mock('../lib/api', async () => ({
   ...await vi.importActual<typeof import('../lib/api')>('../lib/api'),
-  reports: { pl: mocks.pl, bs: mocks.bs, transactionLog: mocks.transactionLog, custom: mocks.custom },
+  reports: {
+    pl: mocks.pl, bs: mocks.bs, transactionLog: mocks.transactionLog, custom: mocks.custom,
+    bankAccounts: mocks.bankAccounts,
+  },
   transactions: { list: mocks.transactions }, savedReports: { list: mocks.savedList },
 }));
 import Reports from './Reports';
@@ -33,6 +37,7 @@ beforeEach(() => {
   mocks.transactionLog.mockResolvedValue({ start: '2026-01-01', end: '2026-01-31', rows: [] });
   mocks.custom.mockResolvedValue({ rows: [], count: 0, total: 0 });
   mocks.transactions.mockResolvedValue({ transactions: [{ bankAccount: 'Operating account' }] });
+  mocks.bankAccounts.mockResolvedValue(['Operating account']);
   mocks.savedList.mockResolvedValue([]);
 });
 
