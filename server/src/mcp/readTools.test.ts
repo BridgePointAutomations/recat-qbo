@@ -145,6 +145,8 @@ describe('Recat MCP read tools', () => {
         combinedSalesRate: 7,
       },
     ]);
+  });
+
   it('returns exact source gross through the strict transaction output schema', async () => {
     const operations = reads();
     vi.mocked(operations.getTransaction).mockResolvedValue({
