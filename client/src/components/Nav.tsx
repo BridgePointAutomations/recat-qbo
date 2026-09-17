@@ -259,6 +259,29 @@ export default function Nav() {
           </button>
         ) : (
           <>
+            <NavLink
+              to="/help"
+              data-tip="How Recat works" data-tip-pos="down"
+              aria-label="Help"
+              className="hov-ink"
+              style={{
+                border: '1px solid var(--bd)',
+                background: 'var(--card)',
+                color: 'var(--mut)',
+                borderRadius: 7,
+                width: 32,
+                height: 32,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                fontSize: 14,
+                fontWeight: 600,
+              }}
+            >
+              ?
+            </NavLink>
+
             <button
               onClick={toggleTheme}
               data-tip="Toggle theme" data-tip-pos="down"
@@ -675,6 +698,29 @@ export default function Nav() {
           >
             {theme === 'light' ? '☾ Dark mode' : '☀ Light mode'}
           </button>
+
+          {/* help */}
+          <NavLink
+            to="/help"
+            onClick={() => setMobileMenu(false)}
+            className="hov-hl"
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              border: 'none',
+              background: 'none',
+              padding: '12px 18px',
+              fontSize: 14.5,
+              fontWeight: 500,
+              color: 'var(--mut)',
+              cursor: 'pointer',
+              font: 'inherit',
+              textDecoration: 'none',
+            }}
+          >
+            ? How Recat works
+          </NavLink>
 
           {/* user */}
           <div

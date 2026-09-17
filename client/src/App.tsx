@@ -14,6 +14,7 @@ import Audit from './pages/Audit';
 import Tags from './pages/Tags';
 import Settings from './pages/Settings';
 import Connect from './pages/Connect';
+import Help from './pages/Help';
 import ReceiptBrowser from './pages/receipts/ReceiptBrowser';
 import ReceiptDetail from './pages/receipts/ReceiptDetail';
 
@@ -91,6 +92,7 @@ export default function App() {
           />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/help" element={<Help />} />
           <Route path="/receipts" element={<ReceiptBrowser />} />
           <Route path="/receipts/dashboard" element={<Navigate replace to="/receipts" />} />
           <Route path="/receipts/:receiptId" element={<ReceiptDetail />} />
