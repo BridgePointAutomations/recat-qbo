@@ -40,6 +40,7 @@ import { webhooksRouter } from './routes/webhooks.js';
 import { mcpTokensRouter } from './routes/mcpTokens.js';
 import { receiptsRouter } from './routes/receipts.js';
 import { receiptSettingsRouter } from './routes/receiptSettings.js';
+import { closeRouter } from './routes/close.js';
 import { createRecatBearerAuth, createRecatTokenVerifier } from './mcp/auth.js';
 import { createMcpHttpGuards } from './mcp/httpGuards.js';
 import {
@@ -131,6 +132,7 @@ app.use('/api/companies/:companyId/rule-candidates', ruleCandidatesRouter);
 app.use('/api/companies/:companyId/rules', rulesRouter);
 app.use('/api/companies/:companyId/reports', reportsRouter);
 app.use('/api/companies/:companyId/dashboard', dashboardRouter);
+app.use('/api/companies/:companyId/close', closeRouter);
 app.use('/api/companies/:companyId/audit', auditRouter);
 app.use('/api/companies/:companyId/autopilot', autopilotRouter);
 app.use('/api/companies', companiesRouter);

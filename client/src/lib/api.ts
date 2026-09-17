@@ -1085,3 +1085,90 @@ export const setup = {
   credentials: (body: { clientId: string; clientSecret: string; env: QboEnv }) =>
     api.post<void>('/api/setup/credentials', body),
 };
+
+export interface ChecklistItemDto {
+  id: string;
+  title: string;
+  phase: 'intake' | 'reconciliation' | 'compilation';
+  category?: string;
+  status: 'PASSED' | 'ACTION_REQUIRED' | 'PENDING' | 'OVERRIDDEN';
+  statusTag: string;
+  summary: string;
+  isCustom?: boolean;
+  requiredForSignOff?: boolean;
+  actionPrompt?: string;
+  suggestedAction?: string;
+  blockingCount?: number;
+  varianceAmount?: number;
+}
+
+export interface CloseCycleSummaryDto {
+  totalItems: number;
+  passedItems: number;
+  actionRequiredItems: number;
+  pendingItems: number;
+  overriddenItems: number;
+  completionPercentage: number;
+  isReadyForSignOff: boolean;
+  statusTag: string;
+}
+
+export interface CloseCycleDto {
+  companyId: string;
+  period: string;
+  status: 'OPEN' | 'IN_PROGRESS' | 'READY_FOR_SIGN_OFF' | 'LOCKED';
+  summary: CloseCycleSummaryDto;
+  items: ChecklistItemDto[];
+  disclaimer: string;
+  lockedAt?: string;
+  lockedBy?: string;
+  compilationNotes?: string;
+}
+
+export interface ClientCloseConfigDto {
+  companyId: string;
+  excludedItemIds: string[];
+  customItems: Array<{
+    id: string;
+    title: string;
+    phase: 'intake' | 'reconciliation' | 'compilation';
+    category: string;
+    actionPrompt?: string;
+    defaultStatus?: string;
+    requiredForSignOff?: boolean;
+  }>;
+}
+
+export const closeApi = {
+  getStatus: (companyId: string, period: string) =>
+    api.get<CloseCycleDto>(`/api/companies/${companyId}/close?period=${period}`),
+  evaluate: (companyId: string, period: string, context?: unknown) =>
+    api.post<CloseCycleDto>(`/api/companies/${companyId}/close/evaluate`, { period, context }),
+  signOff: (companyId: string, period: string, compilationNotes?: string) =>
+    api.post<CloseCycleDto>(`/api/companies/${companyId}/close/sign-off`, { period, compilationNotes }),
+  override: (companyId: string, period: string, itemId: string, reason: string) =>
+    api.post<CloseCycleDto>(`/api/companies/${companyId}/close/override`, { period, itemId, reason }),
+  getConfig: (companyId: string) =>
+    api.get<ClientCloseConfigDto>(`/api/companies/${companyId}/close/config`),
+  addItem: (companyId: string, item: unknown, options?: unknown) =>
+    api.post<{ ok: boolean }>(`/api/companies/${companyId}/close/item/add`, { item, options }),
+  deleteItem: (companyId: string, itemId: string, options?: unknown) =>
+    api.post<{ ok: boolean }>(`/api/companies/${companyId}/close/item/delete`, { itemId, options }),
+  setItemStatus: (companyId: string, period: string, itemId: string, status: string, note?: string) =>
+    api.post<CloseCycleDto>(`/api/companies/${companyId}/close/item/status`, { period, itemId, status, note }),
+  diagnoseVariance: (companyId: string, body: unknown) =>
+    api.post<{ probableCause: string; explanation: string; proposedBalancingEntry?: any; confidence: number }>(
+      `/api/companies/${companyId}/close/diagnose`,
+      body,
+    ),
+  draftInquiry: (companyId: string, body: unknown) =>
+    api.post<{ slackMessage: string; smsMessage: string; itemCount: number }>(
+      `/api/companies/${companyId}/close/draft-inquiry`,
+      body,
+    ),
+  generateCommentary: (companyId: string, body: unknown) =>
+    api.post<{ executiveSummary: string; varianceHighlights: string[]; volumeObservation: string; legalDisclaimer: string; fullNarrative: string }>(
+      `/api/companies/${companyId}/close/compilation-narrative`,
+      body,
+    ),
+};

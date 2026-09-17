@@ -567,14 +567,10 @@ export default function Dashboard() {
               : ''}
           </div>
         </div>
-        <span style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
-            disabled={widgets === null}
-            onClick={(e) => {
-              e.stopPropagation();
-              setAddOpen((v) => !v);
-            }}
+            onClick={() => navigate('/close')}
             className="hov-hl"
             style={{
               border: '1px solid var(--bd)',
@@ -586,56 +582,96 @@ export default function Dashboard() {
               fontWeight: 600,
               cursor: 'pointer',
               font: 'inherit',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            ＋ Add widget
-          </button>
-          {addOpen && (
+            <span>Month-End Close</span>
             <span
-              onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute',
-                right: 0,
-                top: 'calc(100% + 6px)',
-                width: 230,
-                background: 'var(--card)',
-                border: '1px solid var(--bd)',
-                borderRadius: 9,
-                boxShadow: 'var(--sh)',
-                overflow: 'hidden',
-                display: 'block',
-                zIndex: 30,
+                fontSize: 11,
+                fontWeight: 600,
+                color: 'var(--fnt)',
+                background: 'var(--hl)',
+                border: '1px solid var(--bd2)',
+                borderRadius: 99,
+                padding: '1px 6px',
               }}
             >
-              {addOpts.map((ao) => (
-                <button
-                  key={ao.t}
-                  onClick={addWidget(ao.t)}
-                  className="hov-hl"
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    textAlign: 'left',
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    padding: '10px 14px',
-                    font: 'inherit',
-                    fontSize: 13.5,
-                    color: 'var(--ink)',
-                  }}
-                >
-                  {ao.label}
-                </button>
-              ))}
-              {addOpts.length === 0 && (
-                <span style={{ display: 'block', padding: '10px 14px', fontSize: 13, color: 'var(--fnt)' }}>
-                  All widgets are on the board
-                </span>
-              )}
+              AI Assistant
             </span>
-          )}
-        </span>
+          </button>
+          <span style={{ position: 'relative' }}>
+            <button
+              type="button"
+              disabled={widgets === null}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAddOpen((v) => !v);
+              }}
+              className="hov-hl"
+              style={{
+                border: '1px solid var(--bd)',
+                background: 'var(--card)',
+                color: 'var(--ink)',
+                borderRadius: 7,
+                padding: '8px 14px',
+                fontSize: 13.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                font: 'inherit',
+              }}
+            >
+              ＋ Add widget
+            </button>
+            {addOpen && (
+              <span
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 6px)',
+                  width: 230,
+                  background: 'var(--card)',
+                  border: '1px solid var(--bd)',
+                  borderRadius: 9,
+                  boxShadow: 'var(--sh)',
+                  overflow: 'hidden',
+                  display: 'block',
+                  zIndex: 30,
+                }}
+              >
+                {addOpts.map((ao) => (
+                  <button
+                    key={ao.t}
+                    onClick={addWidget(ao.t)}
+                    className="hov-hl"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      padding: '10px 14px',
+                      font: 'inherit',
+                      fontSize: 13.5,
+                      color: 'var(--ink)',
+                    }}
+                  >
+                    {ao.label}
+                  </button>
+                ))}
+                {addOpts.length === 0 && (
+                  <span style={{ display: 'block', padding: '10px 14px', fontSize: 13, color: 'var(--fnt)' }}>
+                    All widgets are on the board
+                  </span>
+                )}
+              </span>
+            )}
+          </span>
+        </div>
       </div>
 
       {dataState === 'loading' && (

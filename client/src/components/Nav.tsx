@@ -17,6 +17,7 @@ const ALL_TABS: Tab[] = [
   { label: 'Queue', to: '/' },
   { label: 'Rules', to: '/rules' },
   { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Month-End Close', to: '/close' },
   { label: 'Reports', to: '/reports' },
   { label: 'Receipts', to: '/receipts' },
   { label: 'Audit log', to: '/audit' },
@@ -29,6 +30,7 @@ function tabsForRole(role: Role | null): Tab[] {
   if (role === null || role === 'viewer') {
     return ALL_TABS.filter((t) =>
       t.label === 'Dashboard'
+      || t.label === 'Month-End Close'
       || t.label === 'Reports'
       || t.label === 'Receipts');
   }
