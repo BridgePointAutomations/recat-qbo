@@ -237,6 +237,8 @@ export default function Nav() {
           /* hamburger (mobile only) — everything else lives in the menu panel */
           <button
             aria-label="Menu"
+            aria-haspopup="menu"
+            aria-expanded={mobileMenu}
             onClick={(e) => {
               e.stopPropagation();
               setMobileMenu((v) => !v);
@@ -260,6 +262,7 @@ export default function Nav() {
             <button
               onClick={toggleTheme}
               data-tip="Toggle theme" data-tip-pos="down"
+              aria-label="Toggle theme"
               className="hov-ink"
               style={{
                 border: '1px solid var(--bd)',
@@ -283,6 +286,8 @@ export default function Nav() {
                   setCoMenu((v) => !v);
                   setUserMenu(false);
                 }}
+                aria-haspopup="menu"
+                aria-expanded={coMenu}
                 className="hov-hl"
                 style={{
                   display: 'inline-flex',
@@ -434,6 +439,9 @@ export default function Nav() {
                   setUserMenu((v) => !v);
                   setCoMenu(false);
                 }}
+                aria-label="Account menu"
+                aria-haspopup="menu"
+                aria-expanded={userMenu}
                 style={{
                   width: 32,
                   height: 32,

@@ -167,6 +167,7 @@ export default function AccessCard() {
                   onClick={() => setPendingRemoval(u)}
                   data-tip="Remove this person entirely — all roles and sessions"
                   data-tip-align="right"
+                  aria-label={`Remove ${u.name ?? u.email} — all roles and sessions`}
                   style={{
                     border: 'none',
                     background: 'none',

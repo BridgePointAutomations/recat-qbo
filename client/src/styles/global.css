@@ -2,19 +2,41 @@
  * Recat global stylesheet.
  * The reset, .rr custom-property blocks, keyframes, and [data-tip] tooltip CSS are
  * ported VERBATIM from design_handoff_recat/Recat.dc.html — do not tweak values.
+ *
+ * Design-system cheat sheet (reuse these instead of inline styles):
+ * - Color/spacing tokens live on `.rr` and `.rr[data-theme="dark"]` above — always
+ *   reference them as `var(--name)`, never hardcode a hex/px that matches one.
+ * - Surfaces: `.card` for any bordered panel (tables, settings cards, modals).
+ * - Buttons: `.btn-primary` (solid accent, primary submit/save actions),
+ *   `.btn` / `.btn-ghost` (neutral bordered actions), plus `.hov-*` utility
+ *   classes (hov-hl/hov-acc/hov-ink/hov-del/hov-dash/hov-brd/hov-full) for the
+ *   inline-style hover overrides ported from the prototype.
+ * - Inputs: `.input` (compact, tables/filters), `.input-lg` (login/wizard forms),
+ *   `.select`, `.text-control`, `.checkbox-control`.
+ * - Dropdowns/comboboxes: `.control-trigger` + `.control-popover` +
+ *   `.control-search` + `.control-options` + `.control-option` — see
+ *   SelectCombobox.tsx for the full ARIA pattern (role=combobox, arrow/Home/
+ *   End/Escape handling); reuse it rather than building a new dropdown.
+ * - Status pills: `.pill-ok` / `.pill-am` / `.pill-er` — always pair with text,
+ *   never color alone.
+ * - Typography: `.page-title` (Spectral serif, every screen's H1),
+ *   `.page-sub` (muted subtitle under it).
+ * - Focus: interactive elements get a ring for free via the global
+ *   `:focus-visible` rule below; only add a bespoke one if a component
+ *   needs different placement (see `.control-trigger`, `.receipt-dropzone`).
  */
 
 body { margin:0; background:#eceae3; font-family:'IBM Plex Sans',sans-serif; }
 a { color:#2f5d50; } a:hover { color:#1e4238; }
 input, select, button { font-family:inherit; }
 
-.rr { --bg:#f1efe8; --sur:#fbfaf7; --card:#ffffff; --bd:#dcd8cf; --bd2:#e9e5db; --ink:#22211d; --mut:#6d685c; --fnt:#9b968a;
+.rr { --bg:#f1efe8; --sur:#fbfaf7; --card:#ffffff; --bd:#dcd8cf; --bd2:#e9e5db; --ink:#22211d; --mut:#6d685c; --fnt:#7a756a;
       --acc:#2f5d50; --accH:#264c41; --hl:#f4f1e8; --rowbd:#f0ede5;
       --amT:#8a6d1f; --amB:#f6edd4; --amD:#e8d9a8;
       --erT:#a13b2e; --erB:#f8e8e4; --erD:#ecc9c1;
       --okT:#2f5d50; --okB:#e8efe9; --okD:#c8d9cd;
       --dark:#22211d; --darkInk:#fbfaf7; --sh:0 10px 30px rgba(50,45,35,.16); }
-.rr[data-theme="dark"] { --bg:#14130f; --sur:#1c1b16; --card:#232219; --bd:#3b392e; --bd2:#302e25; --ink:#ede9dc; --mut:#aaa494; --fnt:#7c7768;
+.rr[data-theme="dark"] { --bg:#14130f; --sur:#1c1b16; --card:#232219; --bd:#3b392e; --bd2:#302e25; --ink:#ede9dc; --mut:#aaa494; --fnt:#8f8a75;
       --acc:#6fa892; --accH:#82bba5; --hl:#282720; --rowbd:#2b2a21;
       --amT:#dbbd6a; --amB:#2c2513; --amD:#4d411f;
       --erT:#e0846f; --erB:#301b16; --erD:#5c2f26;
@@ -239,6 +261,15 @@ input, select, button { font-family:inherit; }
 /* shared labelled fields */
 .rr .field { display:flex; flex-direction:column; gap:5px; min-width:0; }
 .rr .field-label { color:var(--mut); font-size:13px; font-weight:500; }
+
+/* Global focus-visible fallback: covers icon buttons and other interactive
+   elements that don't already have a component-specific focus ring
+   (.control-trigger, .control-search, .receipt-dropzone below). */
+.rr :is(button, a[href], [role="button"], [role="switch"], .interactive-surface):focus-visible {
+  outline:3px solid var(--acc);
+  outline-offset:2px;
+}
+
 .rr .split-line-primary { display:grid; grid-template-columns:92px minmax(0,1fr) 24px; align-items:center; gap:10px; }
 .rr .split-line-details { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:end; gap:10px; margin-top:9px; }
 .rr .split-line-primary .control-trigger,.rr .split-line-details .control-trigger { width:100%; }
@@ -263,9 +294,7 @@ input, select, button { font-family:inherit; }
 .rr .queue-recovery-actions { display:inline-flex; flex-wrap:nowrap; justify-content:center; gap:7px; max-width:100%; }
 .rr .queue-recovery-actions .btn-ghost { padding:8px 10px; font-size:13px; white-space:nowrap; }
 .rr .queue-mobile-actions { flex-wrap:wrap; }
-/* shared labelled fields and text controls */
-.rr .field { display:flex; flex-direction:column; gap:5px; min-width:0; }
-.rr .field-label { color:var(--mut); font-size:13px; font-weight:500; }
+/* shared text controls */
 .rr .text-control { box-sizing:border-box; border:1px solid var(--bd); border-radius:7px; padding:8px 11px; font-size:14px; background:var(--card); color:var(--ink); outline:none; font-family:inherit; }
 .rr .text-control:focus { border-color:var(--acc); }
 .rr[data-theme="dark"] .text-control { color-scheme:dark; }

@@ -377,7 +377,11 @@ export default function Dashboard() {
                     justifyContent: 'flex-end',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+                  <div
+                    role="img"
+                    aria-label={`${m}: revenue ${moneyK(data.rev[i] ?? 0)}, expenses ${moneyK(data.exp[i] ?? 0)}`}
+                    style={{ display: 'flex', alignItems: 'flex-end', gap: 4 }}
+                  >
                     <div
                       style={{
                         width: 17,
@@ -726,6 +730,7 @@ export default function Dashboard() {
                 <button
                   onClick={cycleSize(i)}
                   data-tip="Resize — cycles the widget width"
+                  aria-label={`Resize ${WIDGET_LABELS.find((p) => p.t === w.t)?.label ?? 'widget'}`}
                   className="hov-ink"
                   style={{ ...widgetCtl, fontSize: 12 }}
                 >
@@ -734,6 +739,7 @@ export default function Dashboard() {
                 <button
                   onClick={removeWidget(i)}
                   data-tip="Remove — bring it back with ＋ Add widget"
+                  aria-label={`Remove ${WIDGET_LABELS.find((p) => p.t === w.t)?.label ?? 'widget'} widget`}
                   className="hov-del"
                   style={{ ...widgetCtl, fontSize: 14 }}
                 >

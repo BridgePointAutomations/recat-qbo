@@ -1203,6 +1203,8 @@ export default function Reports() {
                 {!isViewer && (
                   <button
                     onClick={() => deleteSaved(sv.id)}
+                    data-tip={`Delete saved view "${sv.name}"`}
+                    aria-label={`Delete saved view ${sv.name}`}
                     className="hov-del"
                     style={{
                       border: 'none',

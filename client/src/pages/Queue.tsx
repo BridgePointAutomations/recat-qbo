@@ -2072,6 +2072,7 @@ export default function Queue() {
               onMouseDown={stopMouse}
               data-tip={mobile ? 'Undo' : 'Undo — move back to the queue'}
               data-tip-align="right"
+              aria-label="Undo — move back to the queue"
               className={mobile ? undefined : 'hov-ink'}
               style={{
                 border: 'none',
@@ -2107,6 +2108,7 @@ export default function Queue() {
               onMouseDown={stopMouse}
               data-tip={mobile ? 'Undo' : 'Undo — move back to the queue'}
               data-tip-align="right"
+              aria-label="Undo — move back to the queue"
               className={mobile ? undefined : 'hov-ink'}
               style={{
                 border: 'none',
@@ -2418,6 +2420,7 @@ export default function Queue() {
                           selectedIds={t.tagIds}
                           onToggle={(tagId) => toggleTag(t, tagId)}
                           onManage={() => navigate('/tags')}
+                          onClose={() => setTagPicker(null)}
                           width={230}
                         />
                       )}
@@ -2648,6 +2651,7 @@ export default function Queue() {
                       tags={tags}
                       selectedIds={t.tagIds}
                       onToggle={(tagId) => toggleTag(t, tagId)}
+                      onClose={() => setTagPicker(null)}
                       width="min(230px,86vw)"
                     />
                   )}

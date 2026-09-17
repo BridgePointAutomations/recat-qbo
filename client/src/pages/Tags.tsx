@@ -280,6 +280,11 @@ export default function Tags() {
           <span style={{ textAlign: 'right' }}>Used on</span>
           <span></span>
         </div>
+        {rows.length === 0 && (
+          <div style={{ padding: '40px 20px', textAlign: 'center', fontSize: 14, color: 'var(--fnt)' }}>
+            No tags yet — add your first tag below.
+          </div>
+        )}
         {rows.map(({ tag, color }) => (
           <div key={tag.id} className="tags-row">
             <ColorDots
@@ -301,6 +306,7 @@ export default function Tags() {
                 className="tags-del"
                 onClick={() => deleteTag(tag)}
                 data-tip="Delete tag (removes it from all transactions)"
+                aria-label={`Delete tag ${tag.name} (removes it from all transactions)`}
                 style={delStyle}
               >
                 ×

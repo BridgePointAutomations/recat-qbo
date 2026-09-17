@@ -237,7 +237,7 @@ export default function Settings() {
                 nothing. Recommended until you trust the setup.
               </div>
             </div>
-            <ToggleSwitch on={dryRun} onToggle={toggleDry} />
+            <ToggleSwitch on={dryRun} onToggle={toggleDry} label="Dry-run mode" />
           </div>
 
           {/* api & webhooks (admin) */}
@@ -272,7 +272,7 @@ export default function Settings() {
                 A transaction can't be posted to QuickBooks until it carries at least one tag.
               </div>
             </div>
-            <ToggleSwitch on={tagsRequired} onToggle={toggleReqTags} />
+            <ToggleSwitch on={tagsRequired} onToggle={toggleReqTags} label="Tags are required" />
           </div>
 
           {/* density (per-user, per-browser) */}

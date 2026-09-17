@@ -26,9 +26,21 @@ export function InfoDot({ tip, align }: { tip: string; align?: 'right' }) {
 }
 
 /** 46×26 pill toggle with a 20px knob — the Settings dry-run / tags-required switch. */
-export function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+export function ToggleSwitch({
+  on,
+  onToggle,
+  label,
+}: {
+  on: boolean;
+  onToggle: () => void;
+  label?: string;
+}) {
   return (
     <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
       onClick={onToggle}
       style={{
         position: 'relative',

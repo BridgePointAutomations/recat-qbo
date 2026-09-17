@@ -10,6 +10,7 @@ import { audit as auditApi } from '../lib/api';
 import { useApp } from '../state/AppContext';
 import { fmtMoney } from '../lib/format';
 import { AutopilotQueueStatus } from './settings/AutopilotCard';
+import { Spinner } from '../components/ui';
 
 // Grid `150px 110px 1fr 120px 1.4fr`; ≤640px rows switch to flex-wrap with
 // gap 3px 14px and the header hides (prototype auditDisp / auditGap / deskQ).
@@ -160,6 +161,11 @@ export default function Audit() {
           <span>Action</span>
           <span>Change</span>
         </div>
+        {!loaded && (
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+            <Spinner size={22} />
+          </div>
+        )}
         {entries.map((e) => {
           const [chipC, chipB, chipD] = chipColors(e.action);
           return (

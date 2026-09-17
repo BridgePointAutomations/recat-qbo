@@ -768,7 +768,13 @@ export default function Rules() {
                     style={{ width: 15, height: 15, accentColor: 'var(--acc)', cursor: 'pointer' }}
                   />
                 </span>
-                <button className="rules-del" onClick={() => deleteRule(rule)} data-tip="Delete rule" style={delStyle}>
+                <button
+                  className="rules-del"
+                  onClick={() => deleteRule(rule)}
+                  data-tip="Delete rule"
+                  aria-label={`Delete rule: payee contains "${rule.matchText}"`}
+                  style={delStyle}
+                >
                   ×
                 </button>
               </span>
@@ -856,6 +862,7 @@ export default function Rules() {
             <button
               onClick={() => setTestRes(null)}
               data-tip="Dismiss"
+              aria-label="Dismiss test results"
               style={{
                 position: 'absolute',
                 top: 8,
