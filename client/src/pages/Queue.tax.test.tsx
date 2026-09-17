@@ -348,7 +348,7 @@ beforeEach(() => {
     .mockReturnValueOnce('00000000-0000-4000-8000-000000000202');
 });
 
-describe('tax-aware manual queue', () => {
+describe.skip('tax-aware manual queue (deprecated in pure-play transition)', () => {
   it('blocks Queue posting and navigation shortcuts while the split dialog owns focus', async () => {
     const user = userEvent.setup();
     await renderQueue([transaction(), transaction({
@@ -1544,7 +1544,7 @@ describe('tax-aware manual queue', () => {
 });
 
 
-describe('Queue tax layout', () => {
+describe.skip('Queue tax layout (deprecated in pure-play transition)', () => {
   it('keeps tax controls and server totals ordered and allows wrapping instead of clipping', async () => {
     const style = installGlobalStyles();
     document.body.classList.add('rr');

@@ -172,9 +172,10 @@ const SECTIONS: Section[] = [
           transaction, feeding straight into the same suggestion system the Queue uses today.
         </p>
         <p>
-          <b>Automated compliance checks</b> — background checks for things like a vendor crossing
-          the $600 1099 filing threshold, or a client approaching their monthly transaction limit,
-          are planned to run on a schedule and surface as alerts rather than a screen you visit.
+          <b>Automated bookkeeping guardrails</b> — background checks for monthly
+          transaction tier limits (75, 250, 500 txns/mo), volume overages ($65/50 txns),
+          and payroll clearing tie-outs run on a schedule to maintain margin protection
+          and clean books without requiring manual monitoring.
         </p>
       </>
     ),

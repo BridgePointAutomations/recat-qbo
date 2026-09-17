@@ -476,14 +476,10 @@ export default function Queue() {
     [taxDirectionFor, taxReadiness],
   );
 
+  // Pure-play bookkeeping: tax lifecycle is bypassed in favor of standard double-entry posting.
   const usesTaxLifecycleFor = useCallback(
-    (t: TransactionDto): boolean =>
-      taxDirectionFor(t) !== null && (
-        taxReadyFor(t) ||
-        t.taxCalculation !== null ||
-        taxState(t).mutation !== null
-      ),
-    [taxDirectionFor, taxReadyFor, taxState],
+    (_t: TransactionDto): boolean => false,
+    [],
   );
 
   // Category options: real categories only — no bank/credit-card accounts,
@@ -1215,7 +1211,7 @@ export default function Queue() {
       const t0 = rows.find((t) => t.id === id);
       const hasSplit = !!(t0 && t0.splits && t0.splits.length);
       if (!t0 || hasActiveMutation(t0) || !(t0.category || hasSplit)) return;
-      if (taxReadyFor(t0)) {
+      if (usesTaxLifecycleFor(t0)) {
         commitTax(t0);
         return;
       }
@@ -1764,103 +1760,8 @@ export default function Queue() {
         </span>
       ));
 
-  const taxControls = (t: TransactionDto) => {
-    if (!taxReadyFor(t) || t.status !== 'PENDING' || (!t.category && !(t.splits && t.splits.length))) {
-      return null;
-    }
-    const state = taxState(t);
-    const direction = taxDirectionFor(t);
-    const taxLabel = taxLabelFor(t);
-    const isSplit = !!(t.splits && t.splits.length);
-    const locked = hasActiveMutation(t);
-    const canStage =
-      stageBodyFor(t, state) !== null &&
-      !state.staging &&
-      !state.reloadRequired &&
-      !locked;
-    return (
-      <span className="queue-tax-controls">
-        <span className={`queue-tax-line${isMobile ? ' queue-tax-line-mobile' : ''}`}>
-          {!isSplit && (
-            <TaxCodePicker
-              id={`tax-code-${t.id}`}
-              label={`${taxLabel} for ${t.payee}`}
-              readiness={taxReadiness}
-              direction={direction ?? 'purchase'}
-              value={state.taxCodeQboId}
-              disabled={locked}
-              onChange={(taxCodeQboId) => {
-                if (locked) return;
-                patchRow(t.id, {
-                  taxCodeQboId,
-                  taxCode:
-                    taxCodesFor(t).find((code) => code.qboId === taxCodeQboId)?.name ?? null,
-                });
-                invalidateTaxStage(t, {
-                  taxCodeQboId,
-                  taxCalculation:
-                    taxCodeQboId === null
-                      ? 'NotApplicable'
-                      : state.taxCalculation === 'TaxExcluded'
-                        ? 'TaxExcluded'
-                        : 'TaxInclusive',
-                });
-              }}
-            />
-          )}
-          {state.taxCodeQboId !== null ||
-          (isSplit && state.taxCalculation !== 'NotApplicable') ? (
-            <span style={{ display: 'block' }}>
-              <label
-                htmlFor={`tax-calculation-${t.id}`}
-                style={{ display: 'block', fontSize: 12, color: 'var(--mut)', marginBottom: 4 }}
-              >
-                Tax calculation for {t.payee}
-              </label>
-              <select
-                id={`tax-calculation-${t.id}`}
-                className="select"
-                value={state.taxCalculation === 'TaxExcluded' ? 'TaxExcluded' : 'TaxInclusive'}
-                disabled={locked}
-                onChange={(event) => {
-                  if (locked) return;
-                  invalidateTaxStage(t, {
-                    taxCalculation: event.target.value as TaxCalculation,
-                  });
-                }}
-                style={{ width: '100%' }}
-              >
-                <option value="TaxInclusive">Tax inclusive</option>
-                <option value="TaxExcluded">Tax exclusive</option>
-              </select>
-            </span>
-          ) : (
-            <span style={{ fontSize: 12, color: 'var(--mut)', paddingBottom: 8 }}>
-              No tax selected
-            </span>
-          )}
-          {state.staged && state.stagedVersion === state.version && (
-            <span className="queue-tax-totals">
-              <span>Subtotal {centsLabel(state.staged.totals.subtotalCents)}</span>
-              <span>Tax {centsLabel(state.staged.totals.taxCents)}</span>
-              <span>Total {centsLabel(state.staged.totals.totalCents)}</span>
-            </span>
-          )}
-        </span>
-        <span className="queue-tax-feedback">
-          <button
-            type="button"
-            className="btn-ghost"
-            disabled={!canStage}
-            onClick={() => stageTax(t)}
-            style={{ opacity: canStage ? 1 : 0.45, whiteSpace: 'nowrap' }}
-          >
-            {state.staging ? 'Calculating…' : 'Preview tax'}
-          </button>
-        </span>
-      </span>
-    );
-  };
+  // Pure-play bookkeeping: remove tax badges, pickers, and widgets from review tables
+  const taxControls = (_t: TransactionDto) => null;
 
   const taxStatusCell = (v: RowView, mobile: boolean) => {
     const state = taxState(v.t);
