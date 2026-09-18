@@ -89,5 +89,11 @@ export async function allowedOrigins(): Promise<ReadonlySet<string>> {
     // itself, mirroring what the previous inline check did.
     origins.add(origin ?? candidate);
   }
+  if (process.env.NODE_ENV !== 'production') {
+    origins.add('http://localhost:5173');
+    origins.add('http://localhost:3001');
+    origins.add('http://127.0.0.1:5173');
+    origins.add('http://127.0.0.1:3001');
+  }
   return origins;
 }
