@@ -245,24 +245,24 @@ describe('agent decision provider contract', () => {
 
   it('uses code-point text limits and canonical whitespace in raw schema parity', () => {
     const astralMemo = proposal();
-    (nestedProposal(astralMemo).lines as RecordValue[])[0]!.memo = '😀'.repeat(500);
+    (nestedProposal(astralMemo).lines as RecordValue[])[0]!.memo = '\u{10000}'.repeat(500);
     expectRawParity(astralMemo, true);
     const overlongAstralMemo = proposal();
-    (nestedProposal(overlongAstralMemo).lines as RecordValue[])[0]!.memo = '😀'.repeat(501);
+    (nestedProposal(overlongAstralMemo).lines as RecordValue[])[0]!.memo = '\u{10000}'.repeat(501);
     expectRawParity(overlongAstralMemo, false);
 
     const astralRationale = proposal();
-    nestedProposal(astralRationale).rationale = '😀'.repeat(2000);
+    nestedProposal(astralRationale).rationale = '\u{10000}'.repeat(2000);
     expectRawParity(astralRationale, true);
     const overlongAstralRationale = proposal();
-    nestedProposal(overlongAstralRationale).rationale = '😀'.repeat(2001);
+    nestedProposal(overlongAstralRationale).rationale = '\u{10000}'.repeat(2001);
     expectRawParity(overlongAstralRationale, false);
 
     const astralAbstain = abstain();
-    (astralAbstain.decision as RecordValue).rationale = '😀'.repeat(2000);
+    (astralAbstain.decision as RecordValue).rationale = '\u{10000}'.repeat(2000);
     expectRawParity(astralAbstain, true);
     const overlongAstralAbstain = abstain();
-    (overlongAstralAbstain.decision as RecordValue).rationale = '😀'.repeat(2001);
+    (overlongAstralAbstain.decision as RecordValue).rationale = '\u{10000}'.repeat(2001);
     expectRawParity(overlongAstralAbstain, false);
 
     for (const text of [' leading', 'trailing ', 'double  space', 'tab\tspace', 'line\nbreak']) {

@@ -257,7 +257,7 @@ export default function Nav() {
               fontSize: 15,
             }}
           >
-            ☰
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
           </button>
         ) : (
           <>
@@ -276,18 +276,19 @@ export default function Nav() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                cursor: 'pointer',
+                fontSize: 13,
                 textDecoration: 'none',
-                fontSize: 14,
-                fontWeight: 600,
               }}
             >
               ?
             </NavLink>
 
+            {/* theme toggle */}
             <button
               onClick={toggleTheme}
-              data-tip="Toggle theme" data-tip-pos="down"
-              aria-label="Toggle theme"
+              data-tip={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'} data-tip-pos="down"
+              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
               className="hov-ink"
               style={{
                 border: '1px solid var(--bd)',
@@ -296,11 +297,18 @@ export default function Nav() {
                 borderRadius: 7,
                 width: 32,
                 height: 32,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 cursor: 'pointer',
                 fontSize: 14,
               }}
             >
-              {theme === 'light' ? '☾' : '☀'}
+              {theme === 'light' ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+              )}
             </button>
 
             {/* company switcher */}
@@ -431,7 +439,7 @@ export default function Nav() {
                     <button
                       onClick={() => {
                         setCoMenu(false);
-                        navigate('/connect');
+                        navigate('/settings?tab=businesses&action=add');
                       }}
                       className="hov-hl"
                       style={{
@@ -657,7 +665,7 @@ export default function Nav() {
               <button
                 onClick={() => {
                   setMobileMenu(false);
-                  navigate('/connect');
+                  navigate('/settings?tab=businesses&action=add');
                 }}
                 className="hov-hl"
                 style={{
@@ -698,7 +706,19 @@ export default function Nav() {
               font: 'inherit',
             }}
           >
-            {theme === 'light' ? '☾ Dark mode' : '☀ Light mode'}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {theme === 'light' ? (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                  <span>Dark mode</span>
+                </>
+              ) : (
+                <>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                  <span>Light mode</span>
+                </>
+              )}
+            </span>
           </button>
 
           {/* help */}

@@ -40,6 +40,7 @@ export interface ConnectChoice {
   /** sandbox/production for the REAL flow; null = fall back to the instance
    * default (AppConfig 'qboEnvDefault', then env.QBO_ENVIRONMENT). */
   env: 'sandbox' | 'production' | null;
+  returnTo?: string | null;
 }
 
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -243,7 +244,10 @@ qboOauthRouter.get(
         });
       }
 
-      res.redirect(`${await resolvePublicUrl()}/setup?connected=${company.id}`);
+      const returnTarget = choice.returnTo === 'settings'
+        ? `/settings?tab=businesses&added=${company.id}`
+        : `/setup?connected=${company.id}`;
+      res.redirect(`${await resolvePublicUrl()}${returnTarget}`);
     } catch (err) {
       console.error('[qbo-oauth] connect failed:', err);
       res.redirect(qboFailureRedirect(await resolvePublicUrl(), classifyQboFailure(err, 'oauth')));

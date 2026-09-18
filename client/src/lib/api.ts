@@ -473,6 +473,8 @@ export interface ConnectUrlParams {
   mode: ConnectMode;
   /** sandbox/production for the real flow; ignored for demo. */
   env?: QboEnv;
+  /** Optional return target after OAuth authorization (e.g. 'settings') */
+  returnTo?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -505,7 +507,9 @@ export const companies = {
   /** Consent URL for connecting a (new) company — mode=demo → the built-in
    * fake consent page; mode=real → Intuit OAuth (env picks sandbox/production). */
   connectUrl: (params: ConnectUrlParams) =>
-    api.get<{ url: string }>(`/api/companies/connect-url${qs({ mode: params.mode, env: params.env })}`),
+    api.get<{ url: string }>(`/api/companies/connect-url${qs({ mode: params.mode, env: params.env, returnTo: params.returnTo })}`),
+  /** 1-click import active local tokens from the server's token store. */
+  importLocal: () => api.post<{ ok: boolean; company: CompanyDto }>('/api/companies/import-local'),
   /** Disconnect: revoke tokens, keep history. */
   disconnect: (id: string) => api.del<void>(`/api/companies/${id}`),
   accounts: (id: string) => api.get<QboAccountDto[]>(`/api/companies/${id}/accounts`),

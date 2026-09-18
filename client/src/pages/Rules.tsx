@@ -896,7 +896,7 @@ export default function Rules() {
                 ))}
                 {testRes.result.conflicts[0] && (
                   <div style={{ color: 'var(--amT)', marginTop: 8 }}>
-                    ⚠ Also matched by: &ldquo;{testRes.result.conflicts[0].matchText}&rdquo; →{' '}
+                    Warning: Also matched by: &ldquo;{testRes.result.conflicts[0].matchText}&rdquo; →{' '}
                     {testRes.result.conflicts[0].category}
                     {testRes.result.conflicts.length > 1
                       ? ` (and ${testRes.result.conflicts.length - 1} more)`

@@ -701,7 +701,7 @@ describe('stateless MCP handler', () => {
     { era: 'legacy', mirroredOnly: true },
     { era: 'modern', mirroredOnly: true },
   ])('bounds Unicode $era output (mirrored-only overflow: $mirroredOnly)', async ({ era, mirroredOnly }) => {
-    const largeUnicodeText = '😀'.repeat(mirroredOnly ? 16 : 1_024);
+    const largeUnicodeText = '\u{10000}'.repeat(mirroredOnly ? 16 : 1_024);
     const largeRules = Array.from({ length: 100 }, (_, index) => ({
       id: `rule-${index}`,
       companyId: 'company-a',

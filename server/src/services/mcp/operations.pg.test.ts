@@ -150,7 +150,7 @@ describePostgres('MCP operation PostgreSQL durability', () => {
   it('persists well-formed Unicode and rejects JSONB-invalid boundaries before insert', async () => {
     const valid = await createPreparedOperation(operationInput({
       payload: {
-        memo: 'Cafe\u0301 ☕\nreviewed',
+        memo: 'Cafe\u0301 •\nreviewed',
         proposal: { lines: [], tagIds: [] },
       },
     }), { store: firstClient, now: () => NOW });
@@ -160,7 +160,7 @@ describePostgres('MCP operation PostgreSQL durability', () => {
       select: { payload: true },
     })).resolves.toEqual({
       payload: {
-        memo: 'Café ☕\nreviewed',
+        memo: 'Café •\nreviewed',
         proposal: { lines: [], tagIds: [] },
       },
     });

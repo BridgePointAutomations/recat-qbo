@@ -131,8 +131,8 @@ describe('bounded MCP schemas', () => {
   });
 
   it('measures output bounds in UTF-8 bytes including JSON syntax', () => {
-    expect(() => assertBoundedMcpOutput('😀', { ...MCP_SCHEMA_BOUNDS, maxOutputBytes: 6 })).not.toThrow();
-    expect(() => assertBoundedMcpOutput('😀', { ...MCP_SCHEMA_BOUNDS, maxOutputBytes: 5 }))
+    expect(() => assertBoundedMcpOutput('\u{10000}', { ...MCP_SCHEMA_BOUNDS, maxOutputBytes: 6 })).not.toThrow();
+    expect(() => assertBoundedMcpOutput('\u{10000}', { ...MCP_SCHEMA_BOUNDS, maxOutputBytes: 5 }))
       .toThrowError(expect.objectContaining({ code: 'OUTPUT_BYTES' }));
   });
 
